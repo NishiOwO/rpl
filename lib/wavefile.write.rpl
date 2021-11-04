@@ -1,0 +1,51 @@
+wd-begin
+  // Channels, Sample rate, Bit/Sample
+  "?wavbit" =
+  "?wavsr" =
+  "?wavch" =
+  0 ] "?wavchs" =
+  0 "?wavchi" =
+    ?wavchs ?wavchi 0 ] [$]< "?wavchs" =
+  ?wavchi 1 + : "?wavchi" = ?wavch [LT] #LINE 1 - 1 ;
+  ?wavch ?wavsr ?wavbit ?wavchs 4 ]
+wd-end(3) wav::init
+wd-begin
+  "[Debug] Converting to array" .NL
+  wd-begin
+    0 ] "?d2hr" =
+    "?d2hf" =
+    "?hexdec" =
+    ?hexdec 0 [EQ] #LINE 5 + 1 ;
+      ?hexdec 256 % "?d2hp" =
+      ?d2hr ?d2hr ][ ?d2hp [$]< "?d2hr" =
+      ?hexdec 256 / 0 _ "?hexdec" =
+    ?hexdec 0 [NE] #LINE 3 - 1 ;
+    ?d2hr ?d2hf ?d2hr ][ - [$]- [$]+
+  wd-end(2) wav::d2h
+  "?wavself" =
+  0x52 0x49 0x46 0x46 4 ] "?wavproc" =
+  0x57 0x41 0x56 0x45 4 ] "?wavsym" =
+  0x66 0x6D 0x74 0x20 4 ] 0x10 0x00 0x00 0x00 4 ] 0x01 0x00 2 ] [$]+ [$]+ "?wavfmt" =
+  ?wavself 0 @ 2 wav::d2h "?wavch" =
+  ?wavself 1 @ 4 wav::d2h "?wavsr" =
+  ?wavself 0 @ ?wavself 2 @ * 8 / 2 wav::d2h "?wavba" =
+  ?wavself 1 @ ?wavself 0 @ ?wavself 2 @ * 8 / * 4 wav::d2h "?wavbs" =
+  ?wavself 2 @ 2 wav::d2h "?wavbsm" =
+  0x64 0x61 0x74 0x61 4 ] "?wavdth" =
+  0 ] "?wavdata" =
+  0 "?wavi" =
+    0 "?wavj" =
+      ?wavdata ?wavself 3 @ ?wavj @ ?wavi @ ?wavself 2 @ 8 / wav::d2h [$]+ "?wavdata" =
+    ?wavj 1 + : "?wavj" = ?wavself 0 @ [LT] #LINE 1 - 1 ;
+  ?wavi 1 + : "?wavi" = ?wavself 3 @ 0 @ ][ [LT] #LINE 3 - 1 ;
+  ?wavdata ][ 4 + 4 + 4 + 4 + 4 + 2 + 2 + 4 + 4 + 2 + 2 + 4 + 4 + "?wavsize" =
+  ?wavsize .NL
+  ?wavdata ][ .NL
+  ?wavproc ?wavsize 8 - 4 wav::d2h [$]+
+  ?wavsym ?wavfmt [$]+ [$]+
+  ?wavch ?wavsr [$]+ [$]+
+  ?wavbs ?wavba [$]+ [$]+
+  ?wavbsm ?wavdth [$]+ [$]+
+  ?wavsize 126 - 4 wav::d2h ?wavdata [$]+ [$]+
+  "[Debug] Done" .NL
+wd-end(1) wav::array

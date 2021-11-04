@@ -1,0 +1,3 @@
+.FN ( MathEx::root :: y x :: x 1 y / 3 _ )
+.FN ( MathEx::sqrt :: x :: x 2 "MathEx::root" _CALL )
+.FN ( MathEx::cbrt :: x :: x 3 "MathEx::root" _CALL )
