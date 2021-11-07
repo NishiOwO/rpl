@@ -5,7 +5,15 @@ const error_util = require("./error_util.js");
 const readline = require("readline");
 
 if(process.argv.length < 3){
-  console.log("Welcome to RPL v" + language.version + ".");
+  if(language.RC){
+    console.log("\x1b[38;5;9m"
+              + "****************************");
+    console.log("*          WARNING         *");
+    console.log("* You're using RC version! *");
+    console.log("****************************");
+    console.log(colors.RESET);
+  }
+  console.log("Welcome to RPL v" + language.version + (language.RC ? " RC" + language.RC.number + " (" + language.RC.codename + ")" : "") + ".");
   console.log("Type \"run\" to run program.");
   console.log("Type \"exit\" to exit RPL.");
   const rl = readline.createInterface({

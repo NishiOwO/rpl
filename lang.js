@@ -63,7 +63,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
   if(_op.length == 0){
     module.exports.internal.stack2 = [];
     operators.push(..."+-*/%$#:;=_\\.[]?@!&|^~()".split(""));
-    operators.push(".NL", "NL", "~.", "^.", "|.", "&.",".FN","::",".CALL","_CALL",".IMP","<>","][","/*","*/",".?",":<","#>","#<","#?",".IM",".IMS","$>?","[$]<","[$]^","[$]+","[$]-","[?]!","2>","2<");
+    operators.push(".NL", "NL", "~.", "^.", "|.", "&.",".FN","::",".CALL","_CALL",".IMP","<>","][","/*","*/",".?",":<","#>","#<","#?",".IM",".IMS","$>?","[$]<","[$]^","[$]+","[$]-","[?]!","2>","2<","...","--","#&");
     operators.push(...(["EQ","NE","GT","LT","GE","LE"]).map(x=>`[${x}]`));
   }else{
     operators = _op;
@@ -122,7 +122,6 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
   let ifs = [];
   
   let procstr = str=>str instanceof RPLStruct ? `<Struct ${str.name}>` : (str instanceof RPLRawStruct ? `<Raw-struct ${str.name} (${Object.keys(str.list).map(x=>x + "=" + procstr(str.list[x])).join(",")})>` : (str === undefined ? "undef" : ((str !== str) ? "notnum" : str)));
-  
   
   for (let i = 0; i < processed.length; i++) {
     truecol = 0;
@@ -214,6 +213,63 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         for(let kv of char.split(",").map(x=>(x.match(/^[\S\d]+=[\S\d]+$/) ? x : (x + "=None")).split("="))){
           sdobj[kv[0]] =  kv[1];
         }
+        continue;
+      }
+      if(char.match(/^\[\d+EQ\+\]$/)){
+        let stkpm = +char.match(/^\[(\d+)EQ\+\]$/)[1];
+        let stkarr = [];
+        let compr = stack.pop();
+        let nm = 0;
+        for(let stkp = 0; stkp < stkpm - 1; stkp++){
+          if(stack.pop() == compr) nm++;
+        }
+        stack.push(nm);
+        continue;
+      }
+      if(char.match(/^\[\$\+\]\([^,]+,[^\)]+\)$/)){
+        let pat = char.match(/^\[\$\+\]\(([^,]+),([^\)]+)\)$/);
+        let arrstk = stack.pop();
+        for(let fel of arrstk){
+          variable[pat[2]] = fel;
+          module.exports(wddict[pat[1]].data,log,stack,variable,func,labels,labelq,wddict,operators);
+        }
+        continue;
+      }
+      if(char.startsWith("#*")){
+        let pat = char.match(/^#\*([\S\s]+)$/);
+        let sarr = stack.pop();
+        let farr = stack.pop();
+        let opnm = pat[1];
+        variable["#INT.OUTER.ARRAY"] = [];
+        for(let ic = 0; ic < farr.length; ic++){
+          variable["#INT.OUTER.TRANS.Y"] = farr[ic];
+          variable["#INT.OUTER.TRANS.X"] = sarr;
+          module.exports(`0 ] "#INT.OUTER.ARRAY.CHILD" = wd-begin #INT.OUTER.ARRAY.CHILD #INT.OUTER.ARRAY.CHILD ][ #INT.OUTER.TRANS.Y #INT.OUTER.OPARG ${opnm} [$]< "#INT.OUTER.ARRAY.CHILD" = wd-end #INT.OUTER.OP #INT.OUTER.TRANS.X [$+](#INT.OUTER.OP,#INT.OUTER.OPARG)`,log,stack,variable,func,labels,labelq,wddict,operators);
+          variable["#INT.OUTER.ARRAY"].push(variable["#INT.OUTER.ARRAY.CHILD"]);
+        }
+        stack.push(variable["#INT.OUTER.ARRAY"]);
+        continue;
+      }
+      if(char.startsWith("#+")){
+        let pat = char.match(/^#\+([\S\s]+)$/);
+        let farr = stack.pop();
+        let opnm = pat[1];
+        for(let ic = 0; ic < farr.length; ic++){
+          variable["#INT.REDUCE.TRANS"] = farr[ic];
+          module.exports(`#INT.REDUCE.TRANS ${opnm}`,log,stack,variable,func,labels,labelq,wddict,operators);
+        }
+        continue;
+      }
+      if(char.startsWith("#-")){
+        let pat = char.match(/^#-([\S\s]+)$/);
+        let farr = stack.pop();
+        let opnm = pat[1];
+        for(let ic = 0; ic < farr.length; ic++){
+          stack.push(farr[ic]);
+          if(opnm.startsWith("#-")) module.exports(opnm,log,stack,variable,func,labels,labelq,wddict,operators);
+        }
+        if(!opnm.startsWith("#-")) for(let ic = 0; ic < farr.length - 1; ic++) module.exports(opnm,log,stack,variable,func,labels,labelq,wddict,operators);
+        module.exports(`${opnm.startsWith("#-") ? farr.length : 1} ]`,log,stack,variable,func,labels,labelq,wddict,operators);
         continue;
       }
       if(char.startsWith("_>")){
@@ -382,7 +438,24 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
               throw new StackUnderflow(i,truecol);
             }
             break;
+          
+          case "#&":
+            if(stack.length < 2) throw new StackUnderflow(i,truecol);
+            let farr = stack.pop();
+            let slct = stack.pop();
+            stack.push(farr.filter((x,i)=>slct[i] == 1));
+            break;
 
+          case "--":
+            break;
+          
+          case "...":
+            if(stack.length < 2) throw new StackUnderflow(i,truecol);
+            let sc = stack.pop();
+            let fr = stack.pop();
+            stack.push(Array.from({length:sc - fr},(xxx,indx)=>fr + indx));
+            break;
+          
           case "2>":
             stack.push(module.exports.internal.stack2.pop());
             break;
@@ -829,4 +902,8 @@ module.exports.internal = {
 module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
-module.exports.version = "1.3.0";
+module.exports.version = "1.4.0";
+module.exports.RC = 1 ? {
+  number: 1,
+  codename: "Centauri"
+} : false;
