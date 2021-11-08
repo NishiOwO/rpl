@@ -72,7 +72,11 @@ function cwdp(p){
   return p;
   return require("path").join(".",p);
 }
-const dolog = !process.argv.slice(3).includes("--nolog");
+if(process.argv.slice(3).includes("--nolog")){
+  require("util").deprecate(()=>{},"--nolog doesn't work anymore.\n--nolog is abolished on \x1b[1m1.4.0 RC2\x1b[m.")();
+}
+process.chdir(require("path").dirname(process.argv[2]));
+const dolog = false;// !process.argv.slice(3).includes("--nolog");
 let code = fs.readFileSync(cwdp(process.argv[2]), "utf8");
 if(dolog) console.log(colors.BRIGHT + "Read code: \n"+ colors.YELLOW + code + colors.RESET);
 if(dolog) console.log(colors.BRIGHT + "Output:\n" + colors.GREEN);
@@ -91,9 +95,11 @@ try {
   if (lines.length > 1) {
     console.error(error_util.justify((error.line-1).toString(), 4)+"| "+lines[error.line-2]);
   }
+  const spc = (lines[error.line - 1].match(/^([ ]*)/) || [0,""])[1].replace(/ /g,"");
   console.error(error_util.justify((error.line).toString(), 4)+"| "+lines[error.line-1]);
-  console.error("    "+" ".repeat(error.col+1)+"^".repeat((error.name.length-2)));
-  console.error("    "+" ".repeat(error.col+1)+error.name);
+  //console.log(lines[error.line - 1].split(" ").slice(0,error.col));
+  console.error("      "+spc+(" ".repeat(lines[error.line - 1].split(" ").slice(0,error.col - 1).map(x=>x.length).reduce((x,y)=>{return x+y},0) + error.col - 1))+("^".repeat((lines[error.line - 1].split(" ")[error.col - 1].length))));
+  console.error("      "+spc+(" ".repeat(lines[error.line - 1].split(" ").slice(0,error.col - 1).map(x=>x.length).reduce((x,y)=>{return x+y},0) + error.col - 1))+error.name);
 
   if (error.line != lines.length) {
     console.error(error_util.justify((error.line+1).toString(), 4)+"| "+lines[error.line]);

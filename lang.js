@@ -43,11 +43,13 @@ class RPLStruct extends RPLRawStruct {
     delete this.list;
   }
 }
-module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2).filter((x,i)=>!(x == "--nolog" && i == 1)),notnum:NaN}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
+const tcpRPL = require("./tcp.js");
+const pathlib = require("path");
+module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2).filter((x,i)=>!(x == "--nolog" && i == 1)),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : "")}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
 
 
   
-  let processed = code.split(/(?:\r|)\n/).map(x => x.replace(/^[\t ]*/,"").split(" "));
+  let processed = code.split(/(?:\r|)\n/).map(x => x.replace(/\t/g,"    ").split(" "));
   
   let stack = _stack;
   
@@ -65,6 +67,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
     operators.push(..."+-*/%$#:;=_\\.[]?@!&|^~()".split(""));
     operators.push(".NL", "NL", "~.", "^.", "|.", "&.",".FN","::",".CALL","_CALL",".IMP","<>","][","/*","*/",".?",":<","#>","#<","#?",".IM",".IMS","$>?","[$]<","[$]^","[$]+","[$]-","[?]!","2>","2<","...","--","#&");
     operators.push(...(["EQ","NE","GT","LT","GE","LE"]).map(x=>`[${x}]`));
+  operators.push(...Object.keys(tcpRPL));
   }else{
     operators = _op;
   }
@@ -124,8 +127,9 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
   let procstr = str=>str instanceof RPLStruct ? `<Struct ${str.name}>` : (str instanceof RPLRawStruct ? `<Raw-struct ${str.name} (${Object.keys(str.list).map(x=>x + "=" + procstr(str.list[x])).join(",")})>` : (str === undefined ? "undef" : ((str !== str) ? "notnum" : str)));
   
   for (let i = 0; i < processed.length; i++) {
-    truecol = 0;
-    const line = processed[i];
+    truecol = processed[i].filter(x=>x == "").length;
+    truecol = truecol - 1;
+    const line = processed[i].filter(x=>x != "" && x != "\t");
     for (let j = (goto ? jjump : 0); j < line.length; j++) {
       jmpop = false;
       variable["#LINE"] = i + 1;
@@ -133,7 +137,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
       variable["#ROWS"] = process.stdout.rows;
       variable["#COLUMNS"] = process.stdout.columns;
       goto = false;
-      truecol += 1;
+      truecol++;
       const char = line[j];
       if(ifs.length > 0){
         if(ifs[ifs.length - 1] != 1){
@@ -297,7 +301,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         jjump = lab[1];
         break;
       }
-      if(char.startsWith(">")){
+      if(char.startsWith(">") && !char.startsWith(">>")){
         const lab = labels[char.slice(1)];
         i = lab[0] - 1;
         goto = true;
@@ -371,7 +375,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         continue;
       }
       
-      if (!operators.includes(char) || dq) {
+      if (!operators.includes(char.replace(/^>>[^ ]+$/,">>")) || dq) {
         if(char.startsWith("\"") && !dq){
           dq = true;
           dqstr = char.slice(1);
@@ -511,7 +515,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
           case "#<":
             if(stack.length < 2) throw new StackUnderflow(i,truecol);
             const filename = stack.pop();
-            require("fs").writeFileSync(filename,stack.pop())
+            require("fs").writeFileSync(filename,stack.pop());
             break;
           
           case "#>":
@@ -679,19 +683,19 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             }
             break;
           
-					case "!":
-						if(stack.length > 0) {
-							const value = stack.pop();
-							let final = 1;
-							for(let j = 1; j <= value; j++){
-								final *= j;
-							}// backwards from convention but this will work
-							stack.push(final);
-						} else {
-							throw new StackUnderflow(i, truecol);
-						}
-						break;
-					
+          case "!":
+            if(stack.length > 0) {
+              const value = stack.pop();
+              let final = 1;
+              for(let j = 1; j <= value; j++){
+                final *= j;
+              }// backwards from convention but this will work
+              stack.push(final);
+            } else {
+              throw new StackUnderflow(i, truecol);
+            }
+            break;
+          
           case "@":
             if(stack.length > 1){
               const len = stack.pop();
@@ -875,7 +879,11 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             break;
           
           default:
-            if(stack.length < wddict[char].args){
+      if(char.replace(/^>>[^ ]+$/,">>") in tcpRPL){
+        tcpRPL[char.replace(/^>>[^ ]+$/,">>")](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+        break;
+      }
+      if(stack.length < wddict[char].args){
               throw new StackUnderflow(i,truecol);
             }
             module.exports(wddict[char].data,log,stack,variable,func,labels,labelq,wddict,operators);
@@ -902,8 +910,9 @@ module.exports.internal = {
 module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
+module.exports.IncorrectType = IncorrectType;
 module.exports.version = "1.4.0";
 module.exports.RC = 1 ? {
-  number: 1,
+  number: 2,
   codename: "Centauri"
 } : false;
