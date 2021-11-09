@@ -43,9 +43,31 @@ class RPLStruct extends RPLRawStruct {
     delete this.list;
   }
 }
-const tcpRPL = require("./tcp.js");
+
+const [
+         tcpRPL,
+         eventRPL,
+         compRPL,
+         arrayRPL,
+         mathRPL,
+         logicRPL,
+         ioRPL,
+         miscRPL
+      ] = [
+             "tcp",
+             "event",
+             "comparison",
+             "array",
+             "math",
+             "logic",
+             "io",
+             "misc"
+           ].map(x=>require("./src/" + x + ".js"));
+const stackRPL = require("./src/stack.js");
+
 const pathlib = require("path");
-module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2).filter((x,i)=>!(x == "--nolog" && i == 1)),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : "")}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
+
+module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : "")}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
 
 
   
@@ -64,10 +86,16 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
   let operators = [];
   if(_op.length == 0){
     module.exports.internal.stack2 = [];
-    operators.push(..."+-*/%$#:;=_\\.[]?@!&|^~()".split(""));
-    operators.push(".NL", "NL", "~.", "^.", "|.", "&.",".FN","::",".CALL","_CALL",".IMP","<>","][","/*","*/",".?",":<","#>","#<","#?",".IM",".IMS","$>?","[$]<","[$]^","[$]+","[$]-","[?]!","2>","2<","...","--","#&");
-    operators.push(...(["EQ","NE","GT","LT","GE","LE"]).map(x=>`[${x}]`));
-  operators.push(...Object.keys(tcpRPL));
+    operators.push(..."$#:;=()".split(""));
+    operators.push(".FN","::",".CALL","_CALL",".IMP","/*","*/",":<",".IM",".IMS","$>?","[?]!","--");
+    operators.push(...Object.keys(tcpRPL));
+    operators.push(...Object.keys(compRPL));
+    operators.push(...Object.keys(arrayRPL));
+    operators.push(...Object.keys(mathRPL));
+    operators.push(...Object.keys(logicRPL));
+    operators.push(...Object.keys(ioRPL));
+    operators.push(...Object.keys(stackRPL));
+    operators.push(...Object.keys(miscRPL));
   }else{
     operators = _op;
   }
@@ -152,10 +180,6 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         }
       }
       if(char == ").") continue;
-      if(char == ">>>"){
-        stack.push(Buffer.from(stack.pop()));
-        continue;
-      }
       if(skipund.length != 0){
         if(char != "_" + skipund[skipund.length - 1] + "_") continue;
         skipund.pop();
@@ -301,7 +325,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         jjump = lab[1];
         break;
       }
-      if(char.startsWith(">") && !char.startsWith(">>")){
+      if(char.startsWith(">") && !char.startsWith(">>") && char != ">>>"){
         const lab = labels[char.slice(1)];
         i = lab[0] - 1;
         goto = true;
@@ -375,7 +399,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         continue;
       }
       
-      if (!operators.includes(char.replace(/^>>[^ ]+$/,">>")) || dq) {
+      if ((!operators.includes(char.replace(/^>>[^ ]+$/,">>")) || dq) && char != ">>>") {
         if(char.startsWith("\"") && !dq){
           dq = true;
           dqstr = char.slice(1);
@@ -406,69 +430,6 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         // OPERATORS AND CTL CHARACTERS
 
         switch (char) {
-          case "[EQ]":
-          case "[NE]":
-          case "[GT]":
-          case "[LT]":
-          case "[GE]":
-          case "[LE]":
-            const compop = char.slice(1,-1);
-            if(stack.length > 1){
-              const sv = stack.pop();
-              const fv = stack.pop();
-              let compr = false;
-              switch(compop){
-                case "EQ":
-                  compr = fv == sv;
-                  break;
-                case "NE":
-                  compr = fv != sv;
-                  break;
-                case "GT":
-                  compr = fv > sv;
-                  break;
-                case "LT":
-                  compr = fv < sv;
-                  break;
-                case "GE":
-                  compr = fv >= sv;
-                  break;
-                case "LE":
-                  compr = fv <= sv;
-                  break;
-              }
-              stack.push(compr ? 1 : 0);
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "#&":
-            if(stack.length < 2) throw new StackUnderflow(i,truecol);
-            let farr = stack.pop();
-            let slct = stack.pop();
-            stack.push(farr.filter((x,i)=>slct[i] == 1));
-            break;
-
-          case "--":
-            break;
-          
-          case "...":
-            if(stack.length < 2) throw new StackUnderflow(i,truecol);
-            let sc = stack.pop();
-            let fr = stack.pop();
-            stack.push(Array.from({length:sc - fr},(xxx,indx)=>fr + indx));
-            break;
-          
-          case "2>":
-            stack.push(module.exports.internal.stack2.pop());
-            break;
-          
-          case "2<":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            module.exports.internal.stack2.push(stack.pop());
-            break;
-          
           case "[?]!":
             if(stack.length < 1) throw new StackUnderflow(i,truecol);
             const struct_ = stack.pop();
@@ -478,79 +439,19 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             stack.push(new RPLStruct(struct_.name,struct_.list));
             break;
           
-          case "[$]^":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            let changarr_ = Array.from(stack.pop());
-            changarr_.pop();
-            stack.push(changarr_);
-            break;
-          
-          case "[$]<":
-            if(stack.length < 3) throw new StackUnderflow(i,truecol);
-            const val = stack.pop();
-            const ind = stack.pop();
-            let changarr = stack.pop();
-            changarr[ind] = val;
-            stack.push(changarr);
-            break;
-          
-          case "[$]+":
-            if(stack.length < 2) throw new StackUnderflow(i,truecol);
-            const src = stack.pop();
-            let dest = stack.pop();
-            const resultconc = dest.concat(src);
-            stack.push(resultconc);
-            break;
-          
-          case "[$]-":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            stack.push(Array.from({length:stack.pop()},()=>0));
-            break;
-          
-          case "$>?":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            stack.push(String.fromCharCode(stack.pop()));
-            break;
-          
-          case "#<":
-            if(stack.length < 2) throw new StackUnderflow(i,truecol);
-            const filename = stack.pop();
-            require("fs").writeFileSync(filename,stack.pop());
-            break;
-          
-          case "#>":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            stack.push(require("fs").readFileSync(stack.pop()) + "");
-            break;
-          
-          case "#?":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            stack.push(require("fs").existsSync(stack.pop()) ? 1 : 0);
-            break;
-          
           case ":<":
             const jmp = labelq.pop();
             i = jmp[0] - 1;
             jjump = jmp[1] + 1;
             jmpop = true;
             break;
-            
-          case ".?":
-            const rl = require("readline-sync"); // require()ing this every time is probably not a good idea
-            stack.push(rl.question());
-            break;
+          
           case "/*":
             cmting = true;
             break;
           
           case "*/":
             cmting = false;
-            break;
-          
-          case "][":
-            if(stack.length < 1) throw new StackUnderflow(i,truecol);
-            const resultl = stack.pop().length;
-            stack.push(resultl === undefined ? 0 : resultl);
             break;
             
           case ".IMP": // import library
@@ -560,26 +461,6 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
           case "_CALL":
             if(stack.length  < 1) throw new StackUnderflow(i,truecol);
             module.exports(func[stack.pop()].data,log,stack,variable,func,labels,labelq,wddict,operators);
-            break;
-          
-          case "::":
-            break;
-          
-          case "<>":
-            if(stack.length < 2){
-              throw StackUnderflow(i,truecol);
-            }else{
-              const revlen = stack.pop();
-              if(stack.length < revlen){
-                throw new StackUnderflow(i,truecol);
-              }else{
-                let arrv = [];
-                for(let arrvc = 0; arrvc < revlen; arrvc++){
-                  arrv.push(stack.pop());
-                }
-                stack.push(...arrv);
-              }
-            }
             break;
           
           case "(":
@@ -619,162 +500,6 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             callfunc = true;
             break;
           
-          case "~":
-            if(stack.length > 0){
-              stack.push(!stack.pop() ? 1 : 0);
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "^":
-            if(stack.length > 1){
-              stack.push(stack.pop() ^ stack.pop() ? 1 : 0);
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "|":
-            if(stack.length > 1){
-              stack.push(stack.pop() || stack.pop() ? 1 : 0);
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "&":
-            if(stack.length > 1){
-              stack.push(stack.pop() && stack.pop() ? 1 : 0);
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "~.":
-            if(stack.length > 0){
-              stack.push(~stack.pop());
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "^.":
-            if(stack.length > 1){
-              stack.push(stack.pop() ^ stack.pop());
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "|.":
-            if(stack.length > 1){
-              stack.push(stack.pop() | stack.pop());
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "&.":
-            if(stack.length > 1){
-              stack.push(stack.pop() & stack.pop());
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "!":
-            if(stack.length > 0) {
-              const value = stack.pop();
-              let final = 1;
-              for(let j = 1; j <= value; j++){
-                final *= j;
-              }// backwards from convention but this will work
-              stack.push(final);
-            } else {
-              throw new StackUnderflow(i, truecol);
-            }
-            break;
-          
-          case "@":
-            if(stack.length > 1){
-              const len = stack.pop();
-              const parr = stack.pop();
-              stack.push(parr[len]);
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "?":
-            stack.push(Math.random());
-            break;
-          
-          case "[":
-            if(stack.length > 0){
-              stack.push(...stack.pop());
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "]":
-            if(stack.length > 0){
-              const len = stack.pop();
-              if(stack.length >= len){
-                let arr = [];
-                for(let count = 0; count < len; count++){
-                  arr.push(stack.pop());
-                }
-                arr.reverse()
-                stack.push(arr);
-              }else{
-                throw new StackUnderflow(i,truecol);
-              }
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "_":
-            if(stack.length > 1){
-              const op = stack.pop();
-              const n = stack.pop();
-              if(([3]).includes(op)){
-                if(stack.length > 0){
-                  stack.push(([0,0,0,Math.pow])[op](stack.pop(),n));
-                }else{
-                  throw new StackUnderflow(i,truecol);
-                }
-              }else{
-                stack.push(([Math.floor,Math.ceil,Math.round])[op](n));
-              }
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "\\":
-            if(stack.length < 1) throw new StackUnderflow(i,j);
-            stack.pop();
-            break;
-          
-          case "=":
-            if(stack.length > 1){
-              variable[stack.pop()] = stack.pop();
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case ":":
-            if(stack.length > 0){
-              stack.push(...new Array(2).fill(stack.pop()));
-            }else{
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
           case "#":
             if(stack.length > 1){
               jjump = stack.pop() - 1;
@@ -799,91 +524,34 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             }
             break;
           
-          case "$":
-            if (stack.length > 0){
-              stack.push(+stack.pop());
-            } else {
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "+":
-            if (stack.length > 1) {
-              const sn = stack.pop();
-              const fn = stack.pop();
-              stack.push(fn + sn);
-            } else {
-              throw new StackUnderflow(i,j);
-            }
-            break;
-          
-          case "-":
-            if (stack.length > 1) {
-              const sn = stack.pop();
-              const fn = stack.pop();
-              stack.push(fn - sn);
-            } else {
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "*":
-            if (stack.length > 1) {
-              const sn = stack.pop();
-              const fn = stack.pop();
-              stack.push(fn * sn);
-            } else {
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "/":
-            if (stack.length > 1) {
-              const sn = stack.pop();
-              const fn = stack.pop();
-              stack.push(fn / sn);
-            } else {
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case "%":
-            if (stack.length > 1) {
-              const sn = stack.pop();
-              const fn = stack.pop();
-              stack.push(fn % sn);
-            } else {
-              throw new StackUnderflow(i,truecol);
-            }
-            break;
-          
-          case ".":
-            if(stack.length < 1) throw new StackUnderflow(i,j);
-            r = procstr(stack.pop()).toString();
-            result += r;
-            log(r);
-            break;
-
-          case ".NL":
-            truecol += 2;
-            if(stack.length < 1) throw new StackUnderflow(i,j);
-            r = procstr(stack.pop());
-            log(r + "\n");
-            result += r + "\n";
-            break;
-          
-          case "NL":
-            truecol += 1;
-            result += "\n";
-            log("\n");
-            break;
-          
           default:
-      if(char.replace(/^>>[^ ]+$/,">>") in tcpRPL){
-        tcpRPL[char.replace(/^>>[^ ]+$/,">>")](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
-        break;
-      }
-      if(stack.length < wddict[char].args){
+            if(char.replace(/^>>[^ ]+$/,">>") in tcpRPL && char != ">>>"){
+              tcpRPL[char.replace(/^>>[^ ]+$/,">>")](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }else if(char in compRPL){
+              compRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }else if(char in arrayRPL){
+              arrayRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }else if(char in mathRPL){
+              mathRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }else if(char in logicRPL){
+              logicRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }else if(char in ioRPL){
+              let temp_result = ioRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char,result,procstr);
+              if(temp_result != undefined) result += temp_result;
+              break;
+            }else if(char in stackRPL){
+              stackRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }else if(char in miscRPL){
+              miscRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
+            }
+            if(stack.length < wddict[char].args){
               throw new StackUnderflow(i,truecol);
             }
             module.exports(wddict[char].data,log,stack,variable,func,labels,labelq,wddict,operators);

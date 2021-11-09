@@ -4,18 +4,27 @@ const colors = require("./colors.js");
 const error_util = require("./error_util.js");
 const readline = require("readline");
 
+function crashdump(err){
+  console.log(" ==== CRASH DUMP " + "=".repeat(process.stdout.columns - 19));
+  console.log("Internal program crashed!");
+  console.log("Error name: " + err.name);
+  console.log(" ==== STACKTRACE " + "=".repeat(process.stdout.columns - 19));
+  console.log(err.stack.split(/(?:\r|)\n/).slice(1).map(x=>x.replace(/^[ \t]*/,"")).join("\n"));
+  console.log(err);
+}
+
 if(process.argv.length < 3){
   if(language.RC){
-    console.log("\x1b[38;5;9m"
+    console.log("\x1b[91m"
               + "****************************");
     console.log("*          WARNING         *");
     console.log("* You're using RC version! *");
     console.log("****************************");
     console.log(colors.RESET);
   }
-  console.log("Welcome to RPL v" + language.version + (language.RC ? " RC" + language.RC.number + " (" + language.RC.codename + ")" : "") + ".");
+  console.log("Welcome to RPL++ v" + language.version + (language.RC ? " RC" + language.RC.number + " (" + language.RC.codename + ")" : "") + ".");
   console.log("Type \"run\" to run program.");
-  console.log("Type \"exit\" to exit RPL.");
+  console.log("Type \"exit\" to exit RPL++.");
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -45,14 +54,18 @@ if(process.argv.length < 3){
   language(code.join("\n"),d=>process.stdout.write(d));
 
 } catch (error) {
-  if (!(error.code <= -1)) process.exit(-1);
+  if (!(error.code <= -1)){
+    crashdump(error);
+    return;
+  }
   
   let lines = code.join("\n").split(/(?:\r|)\n/);
   console.error(colors.RED);
+  const spc = (lines[error.line - 1].match(/^([ ]*)/) || [0,""])[1].replace(/ /g,"");
   console.error(error_util.justify((error.line-1).toString(), 4)+"| "+lines[error.line-2]);
   console.error(error_util.justify((error.line).toString(), 4)+"| "+lines[error.line-1]);
-  console.error("    "+" ".repeat(error.col+1)+"^".repeat((error.name.length-2)));
-  console.error("    "+" ".repeat(error.col+1)+error.name);
+  console.error("      "+spc+(" ".repeat(lines[error.line - 1].split(" ").slice(0,error.col - 1).map(x=>x.length).reduce((x,y)=>{return x+y},0) + error.col - 1))+("^".repeat((lines[error.line - 1].split(" ")[error.col - 1].length))));
+  console.error("      "+spc+(" ".repeat(lines[error.line - 1].split(" ").slice(0,error.col - 1).map(x=>x.length).reduce((x,y)=>{return x+y},0) + error.col - 1))+error.name);
 
   if (error.line != lines.length) {
     console.error(error_util.justify((error.line+1).toString(), 4)+"| "+lines[error.line]);
@@ -88,8 +101,10 @@ try {
 } catch (error) {
   if(dolog) console.error(colors.RESET + colors.RED + "Process exited with errors");
 
-  if (!(error.code <= -1)) process.exit(-1);
-  
+  if (!(error.code <= -1)){
+    crashdump(error);
+    return;
+  }
   let lines = code.split(/(?:\r|)\n/);
 
   if (lines.length > 1) {
