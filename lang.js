@@ -581,6 +581,6 @@ module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
 module.exports.version = "1.4.0";
 module.exports.RC = 1 ? {
-  number: 2,
+  number: 3,
   codename: "Centauri"
 } : false;
