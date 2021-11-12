@@ -1,3 +1,19 @@
 .FN ( MathEx::root :: y x :: x 1 y / 3 _ )
 .FN ( MathEx::sqrt :: x :: x 2 "MathEx::root" _CALL )
 .FN ( MathEx::cbrt :: x :: x 3 "MathEx::root" _CALL )
+100 "MathEx::trigonometric::calc" =
+3.14159265 "MathEx::pi" =
+wd-begin
+  MathEx::pi 2 * % "#sin.x" =
+  wd-begin
+    "#sin.n" = -1 #sin.n 3 _ 2 #sin.n * 1 + ! / #sin.x 2 #sin.n * 1 + 3 _ *
+  wd-end #sin.a
+  0 MathEx::trigonometric::calc ... #+#sin.a MathEx::trigonometric::calc ] #-+
+wd-end MathEx::sin
+wd-begin
+  MathEx::pi 2 * % "#cos.x" =
+  wd-begin
+    "#cos.n" = -1 #cos.n 3 _ 2 #cos.n * ! / #cos.x 2 #cos.n * 3 _ *
+  wd-end #cos.a
+  0 MathEx::trigonometric::calc ... #+#cos.a MathEx::trigonometric::calc ] #-+
+wd-end MathEx::cos
