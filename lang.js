@@ -575,7 +575,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
 module.exports.internal = {
   stack2: []
 };
-module.exports InternalError = InternalError;
+module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
