@@ -5,4 +5,4 @@ RPL++ - Stack-based Reverse polish notation Programming Language<br>
 
 ## Quick Install
 To quickly install an RPL build, install wget and run the following command:
-`wget -q https://coredoes.dev/mirror/rpl/getrpl.sh -o getrpl.sh && chmod +x getrpl.sh && ./getrpl.sh && rm getrpl.sh`
+`wget -q https://coredoes.dev/mirror/rpl/getrpl.sh && sh getrpl.sh`
