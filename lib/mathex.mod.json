@@ -1,0 +1,6 @@
+{
+  "schemaversion": 1,
+  "name": "MathExtension",
+  "description": "Extension to the RPL math library",
+  "liburl": "https://raw.githubusercontent.com/nishiowo/rpl/master/lib/MathEx.rpl"
+}
