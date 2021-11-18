@@ -21,8 +21,19 @@ module.exports = {
   },
   "::": module.exports["--"],
   ">>>": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+    if(stack.length < 1) throw new err.StackUnderflow(i,truecol);
     let val = stack.pop();
     if(!isNaN(val)) val = [val];
     stack.push(Buffer.from(val));
+  },
+  "!/#/": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+    if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
+    let flag = stack.pop();
+    stack.push(new RegExp(stack.pop(),flag));
+  },
+  "?/#/": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+    if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
+    let regex = stack.pop();
+    stack.push(stack.pop().match(regex));
   }
 };

@@ -67,7 +67,7 @@ const stackRPL = require("./src/stack.js");
 
 const pathlib = require("path");
 
-module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : "")}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
+module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : ""), nil: null}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
 
 
   
@@ -154,12 +154,18 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
   let ifs = [];
   
   let procstr = str=>{
-    return str instanceof RPLStruct ? `<Struct ${str.name}>` : (
-      str instanceof RPLRawStruct ? `<Raw-struct ${str.name} (${Object.keys(str.list).map(x=>x + "=" + procstr(str.list[x])).join(",")})>` : (
-        str === undefined ? "undef" : (
+    return (str instanceof RPLStruct) ? `<Struct ${str.name}>` : (
+      (str instanceof RPLRawStruct) ? `<Raw-struct ${str.name} (${Object.keys(str.list).map(x=>x + "=" + procstr(str.list[x])).join(",")})>` : (
+        (str === undefined) ? "undef" : (
           (str !== str) ? "notnum" : (
             (str instanceof require("events")) ? `<EventEmitter${(str["#NAME"] !== undefined && (str["#NAME"]||"") !== "") ? " " + str["#NAME"] : ""}>` : (
-              str
+              (str instanceof RegExp) ? `<RegEx ${str}>` : (
+                (str === null) ? "nil" : (
+                  Array.isArray(str) ? `<Array [${str}]>` : (
+                    str 
+                  )
+                )
+              )
             )
           )
         )
@@ -595,7 +601,7 @@ module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
-module.exports.version = "1.4.0";
+module.exports.version = "1.4.0A";
 module.exports.RC = 0 ? {
   number: " Final",
   codename: "Centauri"
