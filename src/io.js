@@ -14,7 +14,7 @@ module.exports = {
   },
   ".?": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
     const rl = require("readline-sync"); // require()ing this every time is probably not a good idea
-    stack.push(rl.question());
+    stack.push(rl.question("",{hideEchoBack: false}));
   },
   ".": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char,result,procstr){
     if(stack.length < 1) throw new err.StackUnderflow(i,truecol);
@@ -34,5 +34,16 @@ module.exports = {
     result = "\n";
     log("\n");
     return result;
+  },
+  ",?": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char,result){
+    let charc = char.replace(/^,\?/,"");
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on("data",(str)=>{
+      stack.push(str);
+      let wdtemp = {};
+      wdtemp = Object.keys(wddict).filter(x=>wddict[charc].list.includes(x)).map(x=>wddict[x]);
+      err(wddict[charc].data,log,stack,(wddict[charc].temp ? defaultVariable : variable),func,labels,labelq,(wddict[charc].temp ? wdtemp : wddict),operators);
+    });
   }
 };

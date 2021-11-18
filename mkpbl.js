@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const VERSION = '1.4.0B'
+const VERSION = '1.4.0C'
 
 console.log('mkpbl - configuring');
 
@@ -35,7 +35,8 @@ fullBuild = [
   "examples/tcp/server-image.base64",
   "examples/tcp/server-image.png",
   "examples/tcp/server-index.html",
-  "examples/tcp/server.rpl"
+  "examples/tcp/server.rpl",
+  "examples/misc/donut.rpl"
 ];
 
 command = ""

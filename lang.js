@@ -86,8 +86,9 @@ module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariab
   let operators = [];
   if(_op.length == 0){
     module.exports.internal.stack2 = [];
-    operators.push(..."$#:;=()".split(""));
-    operators.push(".FN","::",".CALL","_CALL",".IMP","/*","*/",":<",".IM",".IMS","$>?","[?]!","--");
+    operators.push(..."#;()".split(""));
+    operators.push(".FN",".CALL","_CALL",".IMP","/*","*/",":<",".IM",".IMS","[?]!");
+    operators.push(...["sin","cos"].map(x=>"Exp::"+x));
     operators.push(...Object.keys(tcpRPL));
     operators.push(...Object.keys(eventRPL));
     operators.push(...Object.keys(compRPL));
@@ -420,7 +421,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariab
         continue;
       }
       
-    if (((!operators.includes(char.replace(/^>>[^ ]+$/,">>")) && !operators.includes(char.replace(/^>(\?|!)[^ ]+$/,">$1"))) || dq) && char != ">>>") {
+    if (((!operators.includes(char.replace(/^>>[^ ]+$/,">>")) && !operators.includes(char.replace(/^>(\?|!)[^ ]+$/,">$1")) && !operators.includes(char.replace(/^,\?[^ ]+$/,",?"))) || dq) && char != ">>>") {
         if(char.startsWith("\"") && !dq){
           dq = true;
           dqstr = char.slice(1);
@@ -451,6 +452,16 @@ module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariab
         // OPERATORS AND CTL CHARACTERS
 
         switch (char) {
+          case "Exp::sin":
+            if(stack.length < 1) throw new StackUnderflow(i,truecol);
+            stack.push(Math.sin(stack.pop()));
+            break;
+          
+          case "Exp::cos":
+            if(stack.length < 1) throw new StackUnderflow(i,truecol);
+            stack.push(Math.cos(stack.pop()));
+            break;
+          
           case "[?]!":
             if(stack.length < 1) throw new StackUnderflow(i,truecol);
             const struct_ = stack.pop();
@@ -564,8 +575,8 @@ module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariab
             }else if(char in logicRPL){
               logicRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
               break;
-            }else if(char in ioRPL){
-              let temp_result = ioRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char,result,procstr);
+            }else if(char.replace(/^,\?[^ ]+$/,",?") in ioRPL){
+              let temp_result = ioRPL[char.replace(/^,\?[^ ]+$/,",?")](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char,result,procstr);
               if(temp_result != undefined) result += temp_result;
               break;
             }else if(char in stackRPL){
@@ -608,7 +619,7 @@ module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
-module.exports.version = "1.4.0B";
+module.exports.version = "1.4.0C";
 module.exports.RC = 0 ? {
   number: " Final",
   codename: "Centauri"

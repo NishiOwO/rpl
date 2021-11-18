@@ -42,6 +42,12 @@ module.exports = {
     if(stack.length < 1) throw new err.StackUnderflow(i,truecol);
     stack.push(Array.from({length:stack.pop()},()=>0));
   },
+  "[$]*": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+    if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
+    let len = stack.pop();
+    let elem = stack.pop();
+    stack.push(Array.from({length:len},()=>elem));
+  },
   "][": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
     if(stack.length < 1) throw new err.StackUnderflow(i,truecol);
     const resultl = stack.pop().length;
