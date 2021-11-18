@@ -1,0 +1,6 @@
+{
+  "schemaversion": 1,
+  "name": "http",
+  "description": "HTTP functions for RPL",
+  "liburl": "https://raw.githubusercontent.com/nishiowo/rpl/master/lib/http.rpl"
+}
