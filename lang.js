@@ -89,6 +89,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
     operators.push(..."$#:;=()".split(""));
     operators.push(".FN","::",".CALL","_CALL",".IMP","/*","*/",":<",".IM",".IMS","$>?","[?]!","--");
     operators.push(...Object.keys(tcpRPL));
+    operators.push(...Object.keys(eventRPL));
     operators.push(...Object.keys(compRPL));
     operators.push(...Object.keys(arrayRPL));
     operators.push(...Object.keys(mathRPL));
@@ -152,7 +153,19 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
   
   let ifs = [];
   
-  let procstr = str=>str instanceof RPLStruct ? `<Struct ${str.name}>` : (str instanceof RPLRawStruct ? `<Raw-struct ${str.name} (${Object.keys(str.list).map(x=>x + "=" + procstr(str.list[x])).join(",")})>` : (str === undefined ? "undef" : ((str !== str) ? "notnum" : str)));
+  let procstr = str=>{
+    return str instanceof RPLStruct ? `<Struct ${str.name}>` : (
+      str instanceof RPLRawStruct ? `<Raw-struct ${str.name} (${Object.keys(str.list).map(x=>x + "=" + procstr(str.list[x])).join(",")})>` : (
+        str === undefined ? "undef" : (
+          (str !== str) ? "notnum" : (
+            (str instanceof require("events")) ? `<EventEmitter${(str["#NAME"] !== undefined && (str["#NAME"]||"") !== "") ? " " + str["#NAME"] : ""}>` : (
+              str
+            )
+          )
+        )
+      )
+    );
+  };
   
   for (let i = 0; i < processed.length; i++) {
     truecol = processed[i].filter(x=>x == "").length;
@@ -325,7 +338,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         jjump = lab[1];
         break;
       }
-      if(char.startsWith(">") && !char.startsWith(">>") && char != ">>>"){
+      if(char.startsWith(">") && !char.startsWith(">>") && !char.startsWith(">?") && !char.startsWith(">!") && char != ">>>"){
         const lab = labels[char.slice(1)];
         i = lab[0] - 1;
         goto = true;
@@ -399,7 +412,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         continue;
       }
       
-      if ((!operators.includes(char.replace(/^>>[^ ]+$/,">>")) || dq) && char != ">>>") {
+    if (((!operators.includes(char.replace(/^>>[^ ]+$/,">>")) && !operators.includes(char.replace(/^>(\?|!)[^ ]+$/,">$1"))) || dq) && char != ">>>") {
         if(char.startsWith("\"") && !dq){
           dq = true;
           dqstr = char.slice(1);
@@ -528,6 +541,9 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             if(char.replace(/^>>[^ ]+$/,">>") in tcpRPL && char != ">>>"){
               tcpRPL[char.replace(/^>>[^ ]+$/,">>")](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
               break;
+            }else if(char.replace(/^>(\?|!)[^ ]+$/,">$1") in eventRPL){
+              eventRPL[char.replace(/^>(\?|!)[^ ]+$/,">$1")](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
+              break;
             }else if(char in compRPL){
               compRPL[char](stack,module.exports,variable,log,func,labels,labelq,wddict,operators,i,truecol,char);
               break;
@@ -580,7 +596,7 @@ module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
 module.exports.version = "1.4.0";
-module.exports.RC = 1 ? {
+module.exports.RC = 0 ? {
   number: " Final",
   codename: "Centauri"
 } : false;

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const VERSION = '1.3.0-release'
+const VERSION = '1.4.0-release'
 
 console.log('mkpbl - configuring');
 
@@ -14,6 +14,7 @@ fullBuild = [
   "README.md",
   "ReferenceManual.pdf",
   "RPL.png",
+  "ascii.txt",
   "src/array.js",
   "src/comparison.js",
   "src/event.js",
@@ -54,6 +55,7 @@ minBuild = [
   "error_util.js",
   "lang.js",
   "LICENSE",
+  "ascii.txt",
   "src/array.js",
   "src/comparison.js",
   "src/event.js",

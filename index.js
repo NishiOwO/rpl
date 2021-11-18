@@ -22,6 +22,12 @@ if(process.argv.length < 3){
     console.log("****************************");
     console.log(colors.RESET);
   }
+  console.log((fs.readFileSync(__dirname + "\\ascii.txt") + "")
+              .replace(/(R+)/g,"\x1b[91m\x1b[101m$1\x1b[m")
+              .replace(/(G+)/g,"\x1b[92m\x1b[102m$1\x1b[m")
+              .replace(/(B+)/g,"\x1b[94m\x1b[104m$1\x1b[m")
+              .replace(/(#+)/g,"\x1b[97m\x1b[107m$1\x1b[m")
+              + "\n");
   console.log("Welcome to RPL++ v" + language.version + (language.RC ? " RC" + language.RC.number + " (" + language.RC.codename + ")" : "") + ".");
   console.log("Type \"run\" to run program.");
   console.log("Type \"exit\" to exit RPL++.");
