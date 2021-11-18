@@ -38,7 +38,7 @@ module.exports = {
         args[0].on("error",()=>{});
         args[0]["#NAME"] = "TCPSocket";
         stack.push(args[0]);
-      }else if((serv.constructor == net.Server || serv.constructor == net.Client) && name == "data"){
+      }else if((serv.constructor == net.Server || serv.constructor == net.Socket) && name == "data"){
         stack.push(args[0]);
       }
       err(char.replace(/^>>/,""),log,stack,variable,func,labels,labelq,wddict,operators);

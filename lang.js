@@ -67,10 +67,10 @@ const stackRPL = require("./src/stack.js");
 
 const pathlib = require("path");
 
-module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefined,"#ARGS":process.argv.slice(2),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : ""), nil: null}, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
+module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariable, _func={}, _labels={}, _labelq=[], _wddict={}, _op=[]) { // whitespace indicates a distinction between blocks
 
 
-  
+  try{
   let processed = code.split(/(?:\r|)\n/).map(x => x.replace(/\t/g,"    ").split(" "));
   
   let stack = _stack;
@@ -219,14 +219,16 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
         worddef++;
         if(worddef == 1) continue;
       }
-      if(char.match(/^wd-end(\(\d+\)|)$/)){
+      if(char.match(/^wd-end(_(\([^\)]+\)|)|)(\(\d+\)|)$/)){
         if(worddef == 1){
           wdstring = wdstring.replace(/^\n|\n$/g,"");
           const wdname = line[j + 1];
           operators.push(wdname);
           wddict[wdname] = {
             data: wdstring,
-            args: +char.match(/^wd-end(\(\d+\)|)$/)[1].replace(/^\(|\)$/g,"")
+            args: +char.match(/^wd-end(?:_(?:\([^\)]+\)|)|)(\(\d+\)|)$/)[1].replace(/^\(|\)$/g,""),
+            temp: char.match(/^wd-end(_(?:\([^\)]+\)|)|)(\(\d+\)|)$/)[1] == "_",
+            list: (char.match(/^wd-end(_(\(([^\)]+)\)|)|)(\(\d+\)|)$/)[3]||"").split(",")
           };
           wdstring = "";
           worddef--;
@@ -576,7 +578,9 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
             if(stack.length < wddict[char].args){
               throw new StackUnderflow(i,truecol);
             }
-            module.exports(wddict[char].data,log,stack,variable,func,labels,labelq,wddict,operators);
+            let wdtemp = {};
+            wdtemp = Object.keys(wddict).filter(x=>wddict[char].list.includes(x)).map(x=>wddict[x]);
+            module.exports(wddict[char].data,log,stack,(wddict[char].temp ? defaultVariable : variable),func,labels,labelq,(wddict[char].temp ? wdtemp : wddict),operators);
             break;
         }
       }
@@ -593,6 +597,9 @@ module.exports = function(code, log=() => {}, _stack=[], _variable={undef:undefi
 
 
   return result;
+  }catch(e){
+    throw e;
+  }
 };
 module.exports.internal = {
   stack2: []
@@ -601,8 +608,10 @@ module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
-module.exports.version = "1.4.0A";
+module.exports.version = "1.4.0B";
 module.exports.RC = 0 ? {
   number: " Final",
   codename: "Centauri"
 } : false;
+
+const defaultVariable = {undef:undefined,"#ARGS":process.argv.slice(2),notnum:NaN,"#VERSION":module.exports.version,"#VERSION.FULL":module.exports.version + (module.exports.RC ? " RC" + module.exports.RC.number + " (" + module.exports.RC.codename + ")" : ""), nil: null};

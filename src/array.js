@@ -32,6 +32,12 @@ module.exports = {
     const resultconc = dest.concat(src);
     stack.push(resultconc);
   },
+  "[$],": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+    if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
+    const dest = stack.pop();
+    let src = stack.pop();
+    stack.push(src.join(dest));
+  },
   "[$]-": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
     if(stack.length < 1) throw new err.StackUnderflow(i,truecol);
     stack.push(Array.from({length:stack.pop()},()=>0));

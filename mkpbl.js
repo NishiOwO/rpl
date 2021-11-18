@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const VERSION = '1.4.0A'
+const VERSION = '1.4.0B'
 
 console.log('mkpbl - configuring');
 
@@ -26,6 +26,7 @@ fullBuild = [
   "src/tcp.js",
   "lib/MathEx.rpl",
   "lib/wavefile.write.rpl",
+  "lib/http.rpl",
   "examples/run.sh",
   "examples/README.md",
   "examples/basic/fibonacci.rpl",
@@ -66,7 +67,8 @@ minBuild = [
   "src/stack.js",
   "src/tcp.js",
   "lib/MathEx.rpl",
-  "lib/wavefile.write.rpl"
+  "lib/wavefile.write.rpl",
+  "lib/http.rpl"
 ];
 
 console.log("Done")
