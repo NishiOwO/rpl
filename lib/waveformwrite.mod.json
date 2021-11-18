@@ -1,0 +1,6 @@
+{
+  "schemaversion": 1,
+  "name": "waveformwrite",
+  "description": "Waveform alteration functions",
+  "liburl": "https://raw.githubusercontent.com/nishiowo/rpl/master/lib/waveform.write.rpl"
+}
