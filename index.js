@@ -19,7 +19,7 @@ if(process.argv.length < 3){
     // todo: require user input to continue using
     console.log(colors.BRIGHT + colors.RED + "warn: you are using a release candidate! there may be bugs and instabilities." + colors.RESET);
   }
-  console.log((fs.readFileSync(__dirname + "\\ascii.txt") + "")
+  console.log((fs.readFileSync(__dirname + "/ascii.txt") + "")
     .replace(/(R+)/g,"\x1b[91m\x1b[101m$1\x1b[m")
     .replace(/(G+)/g,"\x1b[92m\x1b[102m$1\x1b[m")
     .replace(/(B+)/g,"\x1b[94m\x1b[104m$1\x1b[m")
