@@ -12,16 +12,16 @@ class StackUnderflow extends InternalError {
     super(...args);
     this.name = "StackUnderflow";
     this.code = -2;
-    this.tip = "try to ensure you aren't removing a value from the stack that you never added to it";
-    this.detailedDesc = "A StackUnderflow occurs when you attempt to pop (remove) a value from the stack when the stack is empty. This usually occurs when you pop a value twice.";
+    this.tip = "try to ensure that there are enough values on the stack for this operand";
+    this.detailedDesc = "A StackUnderflow occurs when an operand requires more values on the stack than are currently there. This usually occurs when you forget to push a value to the stack.";
   }
 }
 class UnknownWord extends InternalError {
-  constructor(...args){
+  constructor(thething,...args){
     super(...args);
     this.name = "UnknownWord";
     this.code = -3;
-    this.tip = "make sure there aren't any spelling mistakes, and check to make sure the thing you are trying to use actually exists";
+    this.tip = "make sure there aren't any spelling mistakes in `" + thething + "`, and check to make sure that `" + thething + "` actually exists";
     this.detailedDesc = "A UnknownWord error is thrown when the RPL++ interpreter finds a token and cannot figure out what it means. This usually occurs when you make a typo or a library function is renamed or removed.";
   }
 }
@@ -30,7 +30,7 @@ class IncorrectType extends InternalError {
     super(...args);
     this.name = "IncorrectType(" + type1 + " != " + type2 + ")";
     this.code = -4;
-    this.tip = "make sure the operation you are using supports the type you are giving it";
+    this.tip = "make sure the operation you are using (which is looking for a " + type2 + " type) supports the type you are giving it (which is " + type1 + ")";
     this.detailedDesc = "An IncorrectType error is thrown when an operand requires a specific type and you pass it the wrong type. This usually occurs when you attempt to call a function with the wrong arguments.";
   }
 }
@@ -448,7 +448,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariab
             if(Object.keys(va).includes(char)){
               return va[char];
             }else{
-              throw new UnknownWord(i,truecol);
+              throw new UnknownWord(char,i,truecol);
             }
           };
           stack.push(isNaN(char) ? vari(variable) : +char);
