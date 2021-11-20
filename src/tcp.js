@@ -16,7 +16,7 @@ module.exports = {
     if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
     let text = stack.pop();
     let serv = stack.pop();
-    if(serv.constructor != net.Server && serv.constructor != net.Socket) throw new err.IncorrectType(i,truecol);
+    if(serv.constructor != net.Server && serv.constructor != net.Socket) throw new err.IncorrectType(serv.constructor.name,net.Server.name,i,truecol);
     serv.write(text);
     stack.push(serv);
   },
@@ -24,7 +24,7 @@ module.exports = {
     if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
     let text = stack.pop();
     let serv = stack.pop();
-    if(serv.constructor != net.Server && serv.constructor != net.Socket) throw new err.IncorrectType(i,truecol);
+    if(serv.constructor != net.Server && serv.constructor != net.Socket) throw new err.IncorrectType(serv.constructor.name,net.Server.name,i,truecol);
     serv.end(text);
     stack.push(serv);
   },
@@ -49,7 +49,7 @@ module.exports = {
     if(stack.length < 2) throw new err.StackUnderflow(i,truecol);
     let port = stack.pop();
     let serv = stack.pop();
-    if(serv.constructor != net.Server) throw new err.IncorrectType(i,truecol);
+    if(serv.constructor != net.Server) throw new err.IncorrectType(serv.constructor.name,net.Server.name,i,truecol);
     serv.listen(port);
   },
   "~@!": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol){
@@ -57,7 +57,7 @@ module.exports = {
     let port = stack.pop();
     let host = stack.pop();
     let sock = stack.pop();
-    if(sock.constructor != net.Socket) throw new err.IncorrectType(i,truecol);
+    if(sock.constructor != net.Socket) throw new err.IncorrectType(sock.constructor.name,net.Socket.name,i,truecol);
     sock.connect(port,host);
   }
 };

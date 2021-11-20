@@ -12,6 +12,8 @@ class StackUnderflow extends InternalError {
     super(...args);
     this.name = "StackUnderflow";
     this.code = -2;
+    this.tip = "try to ensure you aren't removing a value from the stack that you never added to it";
+    this.detailedDesc = "A StackUnderflow occurs when you attempt to pop (remove) a value from the stack when the stack is empty. This usually occurs when you pop a value twice.";
   }
 }
 class UnknownWord extends InternalError {
@@ -19,13 +21,17 @@ class UnknownWord extends InternalError {
     super(...args);
     this.name = "UnknownWord";
     this.code = -3;
+    this.tip = "make sure there aren't any spelling mistakes, and check to make sure the thing you are trying to use actually exists";
+    this.detailedDesc = "A UnknownWord error is thrown when the RPL++ interpreter finds a token and cannot figure out what it means. This usually occurs when you make a typo or a library function is renamed or removed.";
   }
 }
 class IncorrectType extends InternalError {
-  constructor(...args){
+  constructor(type1,type2,...args){
     super(...args);
-    this.name = "IncorrectType";
+    this.name = "IncorrectType(" + type1 + " != " + type2 + ")";
     this.code = -4;
+    this.tip = "make sure the operation you are using supports the type you are giving it";
+    this.detailedDesc = "An IncorrectType error is thrown when an operand requires a specific type and you pass it the wrong type. This usually occurs when you attempt to call a function with the wrong arguments.";
   }
 }
 class RPLRawStruct {
@@ -466,7 +472,7 @@ module.exports = function(code, log=() => {}, _stack=[], _variable=defaultVariab
             if(stack.length < 1) throw new StackUnderflow(i,truecol);
             const struct_ = stack.pop();
             if(!(struct_ instanceof RPLRawStruct)){
-              throw new IncorrectType(i,truecol);
+              throw new IncorrectType(struct_.constructor.name,RPLRawStruct.name,i,truecol);
             }
             stack.push(new RPLStruct(struct_.name,struct_.list));
             break;
