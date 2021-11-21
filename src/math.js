@@ -1,79 +1,183 @@
 module.exports = {
-  "+": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+  "+": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
     if (stack.length > 1) {
       const sn = stack.pop();
       const fn = stack.pop();
       stack.push(fn + sn);
     } else {
-      throw new err.StackUnderflow(i,truecol);
-    }  
+      throw new err.StackUnderflow(i, truecol);
+    }
   },
-  "-": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+  "-": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
     if (stack.length > 1) {
       const sn = stack.pop();
       const fn = stack.pop();
       stack.push(fn - sn);
     } else {
-      throw new err.StackUnderflow(i,truecol);
+      throw new err.StackUnderflow(i, truecol);
     }
   },
-  "*": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+  "*": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
     if (stack.length > 1) {
       const sn = stack.pop();
       const fn = stack.pop();
       stack.push(fn * sn);
     } else {
-      throw new err.StackUnderflow(i,truecol);
+      throw new err.StackUnderflow(i, truecol);
     }
   },
-  "/": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+  "/": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
     if (stack.length > 1) {
       const sn = stack.pop();
       const fn = stack.pop();
       stack.push(fn / sn);
     } else {
-      throw new err.StackUnderflow(i,truecol);
+      throw new err.StackUnderflow(i, truecol);
     }
   },
-  "%": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+  "%": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
     if (stack.length > 1) {
       const sn = stack.pop();
       const fn = stack.pop();
       stack.push(fn % sn);
     } else {
-      throw new err.StackUnderflow(i,truecol);
+      throw new err.StackUnderflow(i, truecol);
     }
   },
-  "!": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
-    if(stack.length > 0) {
+  "!": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
+    if (stack.length > 0) {
       const value = stack.pop();
       let final = 1;
-      for(let j = 1; j <= value; j++){
+      for (let j = 1; j <= value; j++) {
         final *= j;
-      }// backwards from convention but this will work
+      } // backwards from convention but this will work
       stack.push(final);
     } else {
       throw new err.StackUnderflow(i, truecol);
     }
   },
-  "?": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
+  "?": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
     stack.push(Math.random());
   },
-  "_": function(stack,err,variable,log,func,labels,labelq,wddict,operators,i,truecol,char){
-    if(stack.length > 1){
+  _: function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
+    if (stack.length > 1) {
       const op = stack.pop();
       const n = stack.pop();
-      if(([3]).includes(op)){
-        if(stack.length > 0){
-          stack.push(([0,0,0,Math.pow])[op](stack.pop(),n));
-        }else{
-          throw new err.StackUnderflow(i,truecol);
+      if ([3].includes(op)) {
+        if (stack.length > 0) {
+          stack.push([0, 0, 0, Math.pow][op](stack.pop(), n));
+        } else {
+          throw new err.StackUnderflow(i, truecol);
         }
-      }else{
-        stack.push(([Math.floor,Math.ceil,Math.round])[op](n));
+      } else {
+        stack.push([Math.floor, Math.ceil, Math.round][op](n));
       }
-    }else{
-      throw new err.StackUnderflow(i,truecol);
+    } else {
+      throw new err.StackUnderflow(i, truecol);
     }
-  }
+  },
 };
