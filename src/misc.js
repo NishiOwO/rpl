@@ -163,4 +163,23 @@ module.exports = {
     let to = stack.pop();
     stack.push(stack.pop().replace(regex, to));
   },
+  ".JS": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
+    if (stack.length < 1) throw new err.StackUnderflow(i, truecol);
+    let jsprog = stack.pop();
+    const errors = err.errors;
+    let result = new Function("stack","char","errors","line","command",jsprog)(stack,char,errors,line,cmd);
+  },
 };

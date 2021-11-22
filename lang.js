@@ -7,6 +7,7 @@ class InternalError extends Error {
     this.code = -1;
   }
 }
+InternalError.code = -1;
 class StackUnderflow extends InternalError {
   constructor(...args) {
     super(...args);
@@ -18,6 +19,7 @@ class StackUnderflow extends InternalError {
       "A StackUnderflow occurs when an operand requires more values on the stack than are currently there. This usually occurs when you forget to push a value to the stack.";
   }
 }
+StackUnderflow.code = -2;
 class UnknownWord extends InternalError {
   constructor(thething, ...args) {
     super(...args);
@@ -33,6 +35,7 @@ class UnknownWord extends InternalError {
       "A UnknownWord error is thrown when the RPL++ interpreter finds a token and cannot figure out what it means. This usually occurs when you make a typo or a library function is renamed or removed.";
   }
 }
+UnknownWord.code = -3;
 class IncorrectType extends InternalError {
   constructor(type1, type2, ...args) {
     super(...args);
@@ -48,6 +51,7 @@ class IncorrectType extends InternalError {
       "An IncorrectType error is thrown when an operand requires a specific type and you pass it the wrong type. This usually occurs when you attempt to call a function with the wrong arguments.";
   }
 }
+IncorrectType.code = -4;
 class RPLRawStruct {
   constructor(name, list) {
     this.name = name;
@@ -917,11 +921,12 @@ module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
-module.exports.version = "1.4.0C";
-module.exports.RC = 0
+module.exports.errors = {InternalError,StackUnderflow,UnknownWord,IncorrectType};
+module.exports.version = "1.5.0";
+module.exports.RC = 1
   ? {
-      number: " Final",
-      codename: "Centauri",
+      number: "1",
+      codename: "Westerwald",
     }
   : false;
 
