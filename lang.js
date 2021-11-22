@@ -227,6 +227,10 @@ module.exports = function (
         const char = line[j];
         if (ifs.length > 0) {
           if (ifs[ifs.length - 1] != 1) {
+            if(char == "?(" || char == "?!("){
+              ifs.push(0);
+              continue;
+            }
             if (char == ").") {
               ifs.pop();
               continue;
@@ -925,7 +929,7 @@ module.exports.errors = {InternalError,StackUnderflow,UnknownWord,IncorrectType}
 module.exports.version = "1.5.0";
 module.exports.RC = 1
   ? {
-      number: "1",
+      number: "2",
       codename: "Westerwald",
     }
   : false;
