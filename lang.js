@@ -925,7 +925,7 @@ module.exports.errors = {InternalError,StackUnderflow,UnknownWord,IncorrectType}
 module.exports.version = "1.5.0";
 module.exports.RC = 1
   ? {
-      number: "1",
+      number: "2",
       codename: "Westerwald",
     }
   : false;

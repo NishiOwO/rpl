@@ -180,6 +180,6 @@ module.exports = {
     if (stack.length < 1) throw new err.StackUnderflow(i, truecol);
     let jsprog = stack.pop();
     const errors = err.errors;
-    let result = new Function("stack","char","errors","line","command",jsprog)(stack,char,errors,line,cmd);
+    let result = new Function("stack","char","errors","line","command","require",jsprog)(stack,char,errors,i,truecol,require);
   },
 };
