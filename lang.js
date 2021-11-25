@@ -76,6 +76,8 @@ const stackRPL = require("./src/stack.js");
 
 const pathlib = require("path");
 
+const debug = 0;
+
 module.exports = function (
   code,
   log = () => {},
@@ -185,6 +187,12 @@ module.exports = function (
     let sdobj = {};
 
     let ifs = [];
+    
+    let expr = [];
+    
+    let bracket = 0;
+    
+    let bracketins = "";
 
     let procstr = (str) => {
       return str instanceof RPLStruct
@@ -208,14 +216,19 @@ module.exports = function (
         : str === null
         ? "nil"
         : Array.isArray(str)
-        ? `<Array [${str}]>`
+        ? `<Array [${str.map(x=>procstr(x)).join(", ")}]>`
         : str;
     };
 
     for (let i = 0; i < processed.length; i++) {
       truecol = processed[i].filter((x) => x == "").length;
       truecol = truecol - 1;
-      const line = processed[i].filter((x) => x != "" && x != "\t");
+      let pdq = false;
+      const line = processed[i].filter((x) => {
+        if(x.startsWith("\"")) pdq = true;
+        if(x.endsWith("\"") && x != "\"") pdq = false;
+        return x != "" && x != "\t";
+      });
       for (let j = goto ? jjump : 0; j < line.length; j++) {
         jmpop = false;
         variable["#LINE"] = i + 1;
@@ -225,10 +238,25 @@ module.exports = function (
         goto = false;
         truecol++;
         const char = line[j];
+        if(debug) console.log(char);
+        if(char == "{"){
+          bracket++;
+          continue;
+        }
+        if(bracket > 0){
+          if(char == "}") bracket--;
+          if(bracket > 0){
+            bracketins += (bracketins.length == 0 ? "" : " ") + char;
+          }else{
+            expr.push({str: bracketins,i,j});
+            bracketins = "";
+          }
+          continue;
+        }
         if (ifs.length > 0) {
-          if (ifs[ifs.length - 1] != 1) {
-            if(char == "?(" || char == "?!("){
-              ifs.push(0);
+          if (Math.floor(ifs[ifs.length - 1]) != 1) {
+            if(char == "?(" || char == "?!(" || char == "*("){
+              ifs.push(char == "*(" ? 0.5 : 0);
               continue;
             }
             if (char == ").") {
@@ -237,6 +265,33 @@ module.exports = function (
             }
             continue;
           } else if (char == ").") {
+            if(ifs[ifs.length - 1] == 1.5){
+              let expr_ = expr.pop();
+              module.exports(
+                expr_.str,
+                log,
+                stack,
+                variable,
+                func,
+                labels,
+                labelq,
+                wddict,
+                operators
+              );
+              if (stack.length < 1) throw new StackUnderflow(i, truecol);
+              ifs.pop();
+              let temp_ = stack.pop() == 1;
+              if(temp_){
+                jjump = expr_.j + 1;
+                i = expr_.i - 1;
+                goto = true;
+                expr.push(expr_);
+                ifs.push(1.5);
+                break;
+              }else{
+                continue;
+              }
+            }
             ifs.pop();
             continue;
           }
@@ -548,6 +603,24 @@ module.exports = function (
         } else if (char == "?!(") {
           ifs.push(stack.pop() == 0);
           continue;
+        } else if (char == "*(") {
+          let expr_ = expr.pop();
+          module.exports(
+            expr_.str,
+            log,
+            stack,
+            variable,
+            func,
+            labels,
+            labelq,
+            wddict,
+            operators
+          );
+          if (stack.length < 1) throw new StackUnderflow(i, truecol);
+          let temp_ = stack.pop() == 1;
+          if(temp_) expr.push(expr_);
+          ifs.push((temp_ ? 1 : 0) + 0.5);
+          continue;
         }
 
         if (
@@ -559,10 +632,16 @@ module.exports = function (
         ) {
           if (char.startsWith('"') && !dq) {
             dq = true;
-            dqstr = char.slice(1);
+            dqstr = char.slice(1); 
+            //if(char == "\"") dqstr += " ";
+            if(debug) console.log(char);
 
             if (char.endsWith('"') && char.length != 1) {
               dq = false;
+              dqstr = dqstr.replace(/\\(\\)|\\x([0-9a-fA-F]{2})|\\u([0-9a-fA-F]{4})/g,(_,slash,xpt,upt)=>{
+                if(slash == "\\") return "\\";
+                if(xpt || upt) return String.fromCharCode(+("0x" + (xpt || upt)));
+              });
               stack.push(dqstr.slice(0, -1));
             }
           } else if (dq) {
@@ -927,11 +1006,12 @@ module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
 module.exports.errors = {InternalError,StackUnderflow,UnknownWord,IncorrectType};
 module.exports.version = "1.5.0";
+module.exports.RCversion = {
+  number: "3",
+  codename: "Westerwald",
+};                                                 
 module.exports.RC = 1
-  ? {
-      number: "2",
-      codename: "Westerwald",
-    }
+  ? module.exports.RCversion
   : false;
 
 const defaultVariable = {
