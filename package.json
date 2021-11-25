@@ -1,6 +1,6 @@
 {
   "name": "rpl-lang",
-  "version": "1.5.0-rc2",
+  "version": "1.5.0-rc3",
   "description": "",
   "main": "index.js",
   "dependencies": {

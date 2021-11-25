@@ -4,19 +4,26 @@ const colors = require("./colors.js");
 const error_util = require("./error_util.js");
 const readline = require("readline");
 
-function crashdump(err) {
-  console.log(" ==== CRASH DUMP " + "=".repeat(process.stdout.columns - 19));
-  console.log("Internal program crashed!");
-  console.log("Error name: " + err.name);
-  console.log(" ==== STACKTRACE " + "=".repeat(process.stdout.columns - 19));
+function crashdump(error) {
+  //! something bad happened, print scary stacktrace
   console.log(
-    err.stack
-      .split(/(?:\r|)\n/)
-      .slice(1)
-      .map((x) => x.replace(/^[ \t]*/, ""))
-      .join("\n")
+    colors.RED +
+      colors.BRIGHT +
+      ` ==== Internal error ====` +
+      colors.RESET
   );
-  console.log(err);
+  console.log(
+    "Oops, the internal language process crashed. This " +
+      colors.YELLOW +
+      colors.BRIGHT +
+      "is not" +
+      colors.RESET +
+      " an error with your code."
+  );
+  console.log(
+    "Please contact the RPL++ developers on github and paste the code that triggered this error."
+  );
+  console.log("Error name: " + error.name);
 }
 
 if (process.argv.length < 3) {
@@ -76,25 +83,7 @@ if (process.argv.length < 3) {
       language(code.join("\n"), (d) => process.stdout.write(d));
     } catch (error) {
       if (!(error.code <= -1)) {
-        //! something bad happened, print scary stacktrace
-        console.log(
-          colors.RED +
-            colors.BRIGHT +
-            ` ==== Internal error ====` +
-            colors.RESET
-        );
-        console.log(
-          "Oops, the internal language process crashed. This " +
-            colors.YELLOW +
-            colors.BRIGHT +
-            "is not" +
-            colors.RESET +
-            " an error with your code."
-        );
-        console.log(
-          "Please contact the RPL++ developers on github and paste the code that triggered this error."
-        );
-        console.log("Error name: " + error.name);
+        crashdump(error);
         return;
       }
 

@@ -150,7 +150,8 @@ module.exports = {
     if (stack.length < 2) throw new err.StackUnderflow(i, truecol);
     let len = stack.pop();
     let elem = stack.pop();
-    stack.push(Array.from({ length: len }, () => elem));
+    if(!Array.isArray(elem)) elem = [elem];
+    stack.push(Array.from({ length: len }, () => Array.of(...elem)));
   },
   "][": function (
     stack,
@@ -260,5 +261,49 @@ module.exports = {
     let sc = stack.pop();
     let fr = stack.pop();
     stack.push(Array.from({ length: sc - fr }, (xxx, indx) => fr + indx));
+  },
+  "[+]": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
+    if (stack.length < 2) throw new err.StackUnderflow(i, truecol);
+    let sa = stack.pop();
+    let fa = stack.pop();
+    stack.push(Array.from({ length: sa.length }, (xxx, indx) => [fa[indx],sa[indx]]));
+  },
+  "[-]": function (
+    stack,
+    err,
+    variable,
+    log,
+    func,
+    labels,
+    labelq,
+    wddict,
+    operators,
+    i,
+    truecol,
+    char
+  ) {
+    if (stack.length < 1) throw new err.StackUnderflow(i, truecol);
+    let ta = stack.pop();
+    let fa = [];
+    let sa = [];
+    ta.forEach((xxx, indx) => {
+      fa.push(xxx[0]);
+      sa.push(xxx[1]);
+    });
+    stack.push(fa);
+    stack.push(sa);
   },
 };

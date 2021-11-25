@@ -127,8 +127,8 @@ module.exports = {
     char,
     result
   ) {
-    result = "\n";
-    log("\n");
+    result = "\r\n";
+    log("\r\n");
     return result;
   },
   ",?": function (
