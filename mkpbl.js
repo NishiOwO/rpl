@@ -1,7 +1,7 @@
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-const VERSION = "1.5.0-rc3";
+const VERSION = "1.5.0-rc4";
 
 console.log("mkpbl - configuring");
 
@@ -37,6 +37,7 @@ fullBuild = [
   "examples/tcp/server-index.html",
   "examples/tcp/server.rpl",
   "examples/misc/donut.rpl",
+  "extension/languages/jp.rpl.js"
 ];
 
 command = "";
@@ -70,6 +71,7 @@ minBuild = [
   "lib/MathEx.rpl",
   "lib/wavefile.write.rpl",
   "lib/http.rpl",
+  "extension"
 ];
 
 console.log("Done");

@@ -79,7 +79,7 @@ module.exports = {
     truecol,
     char
   ) {
-    stack.push(module.exports.internal.stack2.pop());
+    stack.push(err.internal.stack2.pop());
   },
   "2<": function (
     stack,
@@ -96,6 +96,16 @@ module.exports = {
     char
   ) {
     if (stack.length < 1) throw new err.StackUnderflow(i, truecol);
-    module.exports.internal.stack2.push(stack.pop());
+    err.internal.stack2.push(stack.pop());
   },
 };
+require("fs").readdirSync(require("path").join(__dirname,"../extension")).filter(x=>x.endsWith(".rpl.js")).forEach(x=>{
+  let _result = require("../extension/"+x)();
+  for(let i in (_result.word||{})){
+    try{
+      if(eval("module.exports[\"" + i + "\"]"));
+      eval("module.exports[\"" + i + "\"] = _result.word[i];");
+    }catch(e){
+    }
+  }
+});

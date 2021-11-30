@@ -3,7 +3,95 @@ const fs = require("fs");
 const colors = require("./colors.js");
 const error_util = require("./error_util.js");
 const readline = require("readline");
+const pathlib = require("path");
 
+function warn_rc(){
+  console.log(
+    colors.BRIGHT +
+      colors.RED +
+      "warn: you are using a release candidate! there may be bugs and instabilities." +
+      colors.RESET
+  );
+}
+function startup(){
+  console.log(
+    "Welcome to RPL++ v" +
+      language.version +
+      (language.RC
+        ? " RC" + language.RC.number + " (" + language.RC.codename + ")"
+        : "") +
+      "."
+  );
+  console.log(
+    'Start typing to run RPL++ code. Once done, type "run" to run the code or type "exit" to exit.'
+  ); // todo: better REPL support
+}
+function err(lines,error){
+  const spc = (lines[error.line - 1].match(/^([ ]*)/) || [
+    0,
+    "",
+  ])[1].replace(/ /g, "");
+  console.error(
+    error_util.justify((error.line - 1).toString(), 4) +
+      "| " +
+      lines[error.line - 2]
+  );
+  console.error(
+    error_util.justify(error.line.toString(), 4) +
+      "| " +
+      lines[error.line - 1]
+  );
+  console.error(
+    "      " +
+      spc +
+      " ".repeat(
+        lines[error.line - 1]
+          .split(" ")
+          .slice(0, error.col - 1)
+          .map((x) => x.length)
+          .reduce((x, y) => {
+            return x + y;
+          }, 0) +
+          error.col -
+          1
+      ) +
+      "^".repeat(lines[error.line - 1].split(" ")[error.col - 1].length)
+  );
+  console.error(
+    "      " +
+      spc +
+      " ".repeat(
+        lines[error.line - 1]
+          .split(" ")
+          .slice(0, error.col - 1)
+          .map((x) => x.length)
+          .reduce((x, y) => {
+            return x + y;
+          }, 0) +
+          error.col -
+          1
+      ) +
+      error.name
+  );
+
+  if (error.line != lines.length) {
+    console.error(
+      error_util.justify((error.line + 1).toString(), 4) +
+        "| " +
+        lines[error.line]
+    );
+  }
+
+  if (error.tip) {
+    console.error(
+      colors.BRIGHT + colors.GREEN + "help: " + colors.RESET + error.tip
+    );
+  }
+
+  if (error.detailedDesc) {
+    console.error(colors.BRIGHT + "info: " + error.detailedDesc);
+  }
+};
 function crashdump(error) {
   //! something bad happened, print scary stacktrace
   console.log(
@@ -24,18 +112,23 @@ function crashdump(error) {
     "Please contact the RPL++ developers on github and paste the code that triggered this error."
   );
   console.log("Error name: " + error.name);
+  console.log(error.stack);
 }
-
+require("fs").readdirSync(pathlib.join(__dirname,"extension")).filter(x=>x.endsWith(".rpl.js")).forEach(x=>{
+  let _result = require("./extension/"+x)(language.InternalError);
+  for(let i in (_result.main||{})){
+    try{
+      if(eval(i));
+      eval(i + " = _result.main[i];");
+    }catch(e){
+    }
+  }
+});
 if (process.argv.length < 3) {
   if (language.RC) {
     // display a warning if we are using a rc version
     // todo: require user input to continue using
-    console.log(
-      colors.BRIGHT +
-        colors.RED +
-        "warn: you are using a release candidate! there may be bugs and instabilities." +
-        colors.RESET
-    );
+    warn_rc();
   }
   console.log(
     (fs.readFileSync(__dirname + "/ascii.txt") + "")
@@ -44,17 +137,7 @@ if (process.argv.length < 3) {
       .replace(/(B+)/g, "\x1b[94m\x1b[104m$1\x1b[m")
       .replace(/(#+)/g, "\x1b[97m\x1b[107m$1\x1b[m") + "\n"
   );
-  console.log(
-    "Welcome to RPL++ v" +
-      language.version +
-      (language.RC
-        ? " RC" + language.RC.number + " (" + language.RC.codename + ")"
-        : "") +
-      "."
-  );
-  console.log(
-    'Start typing to run RPL++ code. Once done, type "run" to run the code or type "exit" to exit.'
-  ); // todo: better REPL support
+  startup(language);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -90,70 +173,7 @@ if (process.argv.length < 3) {
       //! code failed, print error message
       let lines = code.join("\n").split(/(?:\r|)\n/);
       console.error(colors.RED);
-      const spc = (lines[error.line - 1].match(/^([ ]*)/) || [
-        0,
-        "",
-      ])[1].replace(/ /g, "");
-      console.error(
-        error_util.justify((error.line - 1).toString(), 4) +
-          "| " +
-          lines[error.line - 2]
-      );
-      console.error(
-        error_util.justify(error.line.toString(), 4) +
-          "| " +
-          lines[error.line - 1]
-      );
-      console.error(
-        "      " +
-          spc +
-          " ".repeat(
-            lines[error.line - 1]
-              .split(" ")
-              .slice(0, error.col - 1)
-              .map((x) => x.length)
-              .reduce((x, y) => {
-                return x + y;
-              }, 0) +
-              error.col -
-              1
-          ) +
-          "^".repeat(lines[error.line - 1].split(" ")[error.col - 1].length)
-      );
-      console.error(
-        "      " +
-          spc +
-          " ".repeat(
-            lines[error.line - 1]
-              .split(" ")
-              .slice(0, error.col - 1)
-              .map((x) => x.length)
-              .reduce((x, y) => {
-                return x + y;
-              }, 0) +
-              error.col -
-              1
-          ) +
-          error.name
-      );
-
-      if (error.line != lines.length) {
-        console.error(
-          error_util.justify((error.line + 1).toString(), 4) +
-            "| " +
-            lines[error.line]
-        );
-      }
-
-      if (error.tip) {
-        console.error(
-          colors.BRIGHT + colors.GREEN + "help: " + colors.RESET + error.tip
-        );
-      }
-
-      if (error.detailedDesc) {
-        console.error(colors.BRIGHT + "info: " + error.detailedDesc);
-      }
+      err(lines,error);
 
       console.error(colors.RESET);
     }
@@ -167,7 +187,7 @@ if (process.argv.length < 3) {
 } else {
   function cwdp(p) {
     return p;
-    return require("path").join(".", p);
+    return pathlib.join(".", p);
   }
   if (process.argv.slice(3).includes("--nolog")) {
     require("util").deprecate(() => {},
@@ -193,65 +213,9 @@ if (process.argv.length < 3) {
       return;
     }
     let lines = code.split(/(?:\r|)\n/);
-
-    if (lines.length > 1) {
-      console.error(
-        error_util.justify((error.line - 1).toString(), 4) +
-          "| " +
-          lines[error.line - 2]
-      );
-    }
-    const spc = (lines[error.line - 1].match(/^([ ]*)/) || [0, ""])[1].replace(
-      / /g,
-      ""
-    );
-    console.error(
-      error_util.justify(error.line.toString(), 4) +
-        "| " +
-        lines[error.line - 1]
-    );
-    //console.log(lines[error.line - 1].split(" ").slice(0,error.col));
-    console.error(
-      "      " +
-        spc +
-        " ".repeat(
-          lines[error.line - 1]
-            .split(" ")
-            .slice(0, error.col - 1)
-            .map((x) => x.length)
-            .reduce((x, y) => {
-              return x + y;
-            }, 0) +
-            error.col -
-            1
-        ) +
-        "^".repeat(lines[error.line - 1].split(" ")[error.col - 1].length)
-    );
-    console.error(
-      "      " +
-        spc +
-        " ".repeat(
-          lines[error.line - 1]
-            .split(" ")
-            .slice(0, error.col - 1)
-            .map((x) => x.length)
-            .reduce((x, y) => {
-              return x + y;
-            }, 0) +
-            error.col -
-            1
-        ) +
-        error.name
-    );
-
-    if (error.line != lines.length) {
-      console.error(
-        error_util.justify((error.line + 1).toString(), 4) +
-          "| " +
-          lines[error.line]
-      );
-    }
-
+    console.error(colors.RED);
+    err(lines,error);
+    
     if (dolog) console.error(colors.RESET);
     process.exit(error.code);
   }

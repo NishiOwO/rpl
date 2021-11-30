@@ -1,7 +1,7 @@
 class InternalError extends Error {
   constructor(line, col, ...args) {
     super(...args);
-    this.name = "InternalError";
+    this.internalName = this.name = "InternalError";
     this.line = line + 1;
     this.col = col + 1;
     this.code = -1;
@@ -11,7 +11,7 @@ InternalError.code = -1;
 class StackUnderflow extends InternalError {
   constructor(...args) {
     super(...args);
-    this.name = "StackUnderflow";
+    this.internalName = this.name = "StackUnderflow";
     this.code = -2;
     this.tip =
       "try to ensure that there are enough values on the stack for this operand";
@@ -23,7 +23,7 @@ StackUnderflow.code = -2;
 class UnknownWord extends InternalError {
   constructor(thething, ...args) {
     super(...args);
-    this.name = "UnknownWord";
+    this.internalName = this.name = "UnknownWord";
     this.code = -3;
     this.tip =
       "make sure there aren't any spelling mistakes in `" +
@@ -39,7 +39,7 @@ UnknownWord.code = -3;
 class IncorrectType extends InternalError {
   constructor(type1, type2, ...args) {
     super(...args);
-    this.name = "IncorrectType(" + type1 + " != " + type2 + ")";
+    this.internalName = this.name = "IncorrectType(" + type1 + " != " + type2 + ")";
     this.code = -4;
     this.tip =
       "make sure the operation you are using (which is looking for a " +
@@ -68,6 +68,69 @@ class RPLStruct extends RPLRawStruct {
   }
 }
 
+function debug_gen(
+  log,
+  stack,
+  variable,
+  func,
+  labels,
+  labelq,
+  wddict,
+  operators,
+  procstr,
+  expr,
+  stack2,
+  i,
+  j
+){
+  let strr = "";
+  strr += "Debug v1.0.0\n";
+  strr += "        Main Stack: " + (stack.map((x,ind,d)=>(ind==0?"":" ".repeat(20))+procstr(d[d.length-ind-1])).join("\n"));
+  strr += "\n";
+  strr += "      Second Stack: " + (stack2.map((x,ind,d)=>(ind==0?"":" ".repeat(20))+procstr(d[d.length-ind-1])).join("\n"));
+  strr += "\n";
+  strr += "  Expression Stack: " + (expr.map((x,ind,d)=>(ind==0?"":" ".repeat(20))+d[d.length-ind-1]).join("\n"));
+  strr += "\n";
+  strr += "             Label: " + (Object.keys(labels).map((x,ind,d)=>(ind==0?"":" ".repeat(20))+ x + " => " + labels[x].join(":")).join("\n"));
+  strr += "\n";
+  strr += "           Worddef: " + (Object.keys(wddict).map((x,ind,d)=>(ind==0?"":" ".repeat(20)) + x + ` (${wddict[x].temp ? "Local word"+(wddict[x].list[0]==""?"":", includes "+wddict[x].list.map((z,ind,d)=>((d.length-1==ind&&ind!=0)?"and ":"")+'"'+z+'"').join(", ")) : "Global word"}, Minimum arguments: ${wddict[x].args})`).join("\n"));
+  strr += "\n";
+  strr += "         Variables: " + (Object.keys(variable).map((x,ind)=>(ind==0?"":" ".repeat(20))+x+" => "+procstr(variable[x])).join("\n"));
+  strr += "\n";
+  strr += "   Line (internal): " + i;
+  strr += "\n";
+  strr += "Cmd pos (internal): " + j;
+  strr += "\n";
+  return strr;
+}
+
+let procstr_list = {
+  "str instanceof RPLStruct": str=>`<Struct ${str.name}>`,
+  "str instanceof RPLRawStruct": str=>`<Raw-struct ${str.name} (${Object.keys(str.list)
+        .map((x) => x + "=" + procstr(str.list[x]))
+        .join(",")})>`,
+  "str === undefined": str=>"undef",
+  "str !== str": str=>"notnum",
+  "str instanceof require(\"events\")": str=>`<EventEmitter${
+        str["#NAME"] !== undefined && (str["#NAME"] || "") !== ""
+          ? " " + str["#NAME"]
+          : ""
+      }>`,
+  "str instanceof RegExp": str=>`<RegEx ${str}>`,
+  "str === null": str=>"nil",
+  "Array.isArray(str)": str=>`<Array [${str.map(x=>procstr(x)).join(", ")}]>`,
+};
+let procstr = (str) => {
+  for(let i in procstr_list){
+    if(eval(i)){
+      return procstr_list[i](str,procstr);
+    }
+  }
+  return str;
+};
+
+let version_mmp = "1.5.0";
+
 const [tcpRPL, eventRPL, compRPL, arrayRPL, mathRPL, logicRPL, ioRPL, miscRPL] =
   ["tcp", "event", "comparison", "array", "math", "logic", "io", "misc"].map(
     (x) => require("./src/" + x + ".js")
@@ -76,7 +139,23 @@ const stackRPL = require("./src/stack.js");
 
 const pathlib = require("path");
 
+let geval = eval;
+require("fs").readdirSync(pathlib.join(__dirname,"extension")).filter(x=>x.endsWith(".rpl.js")).forEach(x=>{
+  let _result = require("./extension/"+x)(version_mmp);
+  for(let i in (_result.lang||{})){
+    try{
+      if(eval(i));
+      eval(i + " = _result.lang[i];");
+    }catch(e){
+    }
+  }
+});
+
 const debug = 0;
+
+let trycatch = false;
+
+let trycatcherr = [];
 
 module.exports = function (
   code,
@@ -90,146 +169,124 @@ module.exports = function (
   _op = []
 ) {
   // whitespace indicates a distinction between blocks
+  let processed = code
+    .split(/(?:\r|)\n/)
+    .map((x) => x.replace(/\t/g, "    ").split(" "));
 
-  try {
-    let processed = code
-      .split(/(?:\r|)\n/)
-      .map((x) => x.replace(/\t/g, "    ").split(" "));
+  let stack = _stack;
 
-    let stack = _stack;
+  let result = "";
 
-    let result = "";
+  let dq = false;
+  //Double Quotation
 
-    let dq = false;
-    //Double Quotation
+  let dqstr = "";
+  //Variable for saving inside of double quotation
 
-    let dqstr = "";
-    //Variable for saving inside of double quotation
+  let operators = [];
+  if (_op.length == 0) {
+    module.exports.internal.stack2 = [];
+    operators.push(..."#;()".split(""));
+    operators.push(
+      ".FN",
+      ".CALL",
+      "_CALL",
+      ".IMP",
+      "/*",
+      "*/",
+      ":<",
+      ".IM",
+      ".IMS",
+      "[?]!",
+      "=.",
+      ")%",
+      "#DEBUG"
+    );
+    operators.push(...["sin", "cos"].map((x) => "Exp::" + x));
+    operators.push(...Object.keys(tcpRPL));
+    operators.push(...Object.keys(eventRPL));
+    operators.push(...Object.keys(compRPL));
+    operators.push(...Object.keys(arrayRPL));
+    operators.push(...Object.keys(mathRPL));
+    operators.push(...Object.keys(logicRPL));
+    operators.push(...Object.keys(ioRPL));
+    operators.push(...Object.keys(stackRPL));
+    operators.push(...Object.keys(miscRPL));
+  } else {
+    operators = _op;
+  }
 
-    let operators = [];
-    if (_op.length == 0) {
-      module.exports.internal.stack2 = [];
-      operators.push(..."#;()".split(""));
-      operators.push(
-        ".FN",
-        ".CALL",
-        "_CALL",
-        ".IMP",
-        "/*",
-        "*/",
-        ":<",
-        ".IM",
-        ".IMS",
-        "[?]!"
-      );
-      operators.push(...["sin", "cos"].map((x) => "Exp::" + x));
-      operators.push(...Object.keys(tcpRPL));
-      operators.push(...Object.keys(eventRPL));
-      operators.push(...Object.keys(compRPL));
-      operators.push(...Object.keys(arrayRPL));
-      operators.push(...Object.keys(mathRPL));
-      operators.push(...Object.keys(logicRPL));
-      operators.push(...Object.keys(ioRPL));
-      operators.push(...Object.keys(stackRPL));
-      operators.push(...Object.keys(miscRPL));
-    } else {
-      operators = _op;
-    }
+  let jjump = 0;
 
-    let jjump = 0;
+  let goto = false;
 
-    let goto = false;
+  let variable = _variable;
 
-    let variable = _variable;
+  let func = _func;
 
-    let func = _func;
+  let labels = _labels;
 
-    let labels = _labels;
+  let labelq = _labelq;
 
-    let labelq = _labelq;
+  let truecol = 0;
 
-    let truecol = 0;
+  let funcdef = false;
 
-    let funcdef = false;
+  let callfunc = false;
 
-    let callfunc = false;
+  let implib = false;
 
-    let implib = false;
+  let impargs = "";
 
-    let impargs = "";
+  let argument = false;
 
-    let argument = false;
+  let callarg = false;
 
-    let callarg = false;
+  let callargs = "";
 
-    let callargs = "";
+  let funcargs = [];
 
-    let funcargs = [];
+  let funcdata = "";
 
-    let funcdata = "";
+  let funcarga = [];
 
-    let funcarga = [];
+  let cmting = false;
 
-    let cmting = false;
+  let jmpop = false;
 
-    let jmpop = false;
+  let skipund = [];
 
-    let skipund = [];
+  let worddef = 0;
 
-    let worddef = 0;
+  let structdef = 0;
 
-    let structdef = 0;
+  let wdstring = "";
 
-    let wdstring = "";
+  let wddict = _wddict;
 
-    let wddict = _wddict;
+  let sdobj = {};
 
-    let sdobj = {};
+  let ifs = [];
+  
+  let expr = [];
+  
+  let bracket = 0;
+  
+  let bracketins = "";
+  
+  let cmparr = [];
 
-    let ifs = [];
-    
-    let expr = [];
-    
-    let bracket = 0;
-    
-    let bracketins = "";
-
-    let procstr = (str) => {
-      return str instanceof RPLStruct
-        ? `<Struct ${str.name}>`
-        : str instanceof RPLRawStruct
-        ? `<Raw-struct ${str.name} (${Object.keys(str.list)
-            .map((x) => x + "=" + procstr(str.list[x]))
-            .join(",")})>`
-        : str === undefined
-        ? "undef"
-        : str !== str
-        ? "notnum"
-        : str instanceof require("events")
-        ? `<EventEmitter${
-            str["#NAME"] !== undefined && (str["#NAME"] || "") !== ""
-              ? " " + str["#NAME"]
-              : ""
-          }>`
-        : str instanceof RegExp
-        ? `<RegEx ${str}>`
-        : str === null
-        ? "nil"
-        : Array.isArray(str)
-        ? `<Array [${str.map(x=>procstr(x)).join(", ")}]>`
-        : str;
-    };
-
-    for (let i = 0; i < processed.length; i++) {
-      truecol = processed[i].filter((x) => x == "").length;
-      truecol = truecol - 1;
-      let pdq = false;
-      const line = processed[i].filter((x) => {
-        if(x.startsWith("\"")) pdq = true;
-        if(x.endsWith("\"") && x != "\"") pdq = false;
-        return x != "" && x != "\t";
-      });
-      for (let j = goto ? jjump : 0; j < line.length; j++) {
+  for (let i = 0; i < processed.length; i++) {
+    truecol = processed[i].filter((x) => x == "").length;
+    truecol = truecol - 1;
+    let pdq = false;
+    const line = processed[i].filter((x) => {
+      if(x.startsWith("\"")) pdq = true;
+      if(x.endsWith("\"") && x != "\"") pdq = false;
+      return x != "" && x != "\t";
+    });
+    for (let j = goto ? jjump : 0; j < line.length; j++) {
+      try{
         jmpop = false;
         variable["#LINE"] = i + 1;
         variable["#CMD"] = j + 1;
@@ -238,7 +295,33 @@ module.exports = function (
         goto = false;
         truecol++;
         const char = line[j];
-        if(debug) console.log(char);
+        if(debug) console.log(trycatch,trycatcherr,char);
+        if(trycatcherr.length > 0){
+        if(trycatcherr[trycatcherr.length - 1][1]){
+          if(char == `):[${trycatcherr[trycatcherr.length - 1][0].match(/^([^\(]+)/)[1]}](` || char == `):(` || char == ")%"){
+            if(char == ")%"){
+              trycatcherr.pop();
+              trycatch = trycatcherr.length != 0;
+            }else if(char == "):("){
+              stack.push([
+                trycatcherr[trycatcherr.length - 1][0],
+                trycatcherr[trycatcherr.length - 1][2].name
+              ]);
+              trycatcherr.pop();
+            }else{
+              stack.push([
+                trycatcherr[trycatcherr.length - 1][0],
+                trycatcherr[trycatcherr.length - 1][2].name
+              ]);
+              trycatcherr.pop();
+            }
+            trycatch = trycatcherr.length != 0;
+            continue;
+          }else{
+            continue;
+          }
+        }
+        }
         if(char == "{"){
           bracket++;
           continue;
@@ -255,7 +338,7 @@ module.exports = function (
         }
         if (ifs.length > 0) {
           if (Math.floor(ifs[ifs.length - 1]) != 1) {
-            if(char == "?(" || char == "?!(" || char == "*("){
+            if(char == "=(" || char == "=>(" || char == "?(" || char == "?!(" || char == "*("){
               ifs.push(char == "*(" ? 0.5 : 0);
               continue;
             }
@@ -328,7 +411,7 @@ module.exports = function (
                 .match(/^wd-end(?:_(?:\([^\)]+\)|)|)(\(\d+\)|)$/)[1]
                 .replace(/^\(|\)$/g, ""),
               temp:
-                char.match(/^wd-end(_(?:\([^\)]+\)|)|)(\(\d+\)|)$/)[1] == "_",
+                char.match(/^wd-end((_)(?:\([^\)]+\)|)|)(\(\d+\)|)$/)[2] == "_",
               list: (
                 char.match(/^wd-end(_(\(([^\)]+)\)|)|)(\(\d+\)|)$/)[3] || ""
               ).split(","),
@@ -592,12 +675,29 @@ module.exports = function (
           }
           continue;
         }
-        if (char == "?(" || char == "?!(") {
+        if (char == "?(" || char == "?!(" || char == "=>(") {
           if (stack.length < 1) {
             throw new StackUnderflow(i, truecol);
           }
+        }else if(char == "=(") {
+          if (stack.length < 2) {
+            throw new StackUnderflow(i, truecol);
+          }
         }
-        if (char == "?(") {
+        if (char == "=(") {
+          let cmpto = stack.pop();
+          ifs.push(stack.pop() == cmpto ? 1 : 0);
+          cmparr.push(cmpto);
+          continue;
+        } else if (char == "=>(") {
+          let cmpto = cmparr.pop();
+          ifs.push(stack.pop() == cmpto ? 1 : 0);
+          cmparr.push(cmpto);
+          continue;
+        } else if (char == "%(") {
+          trycatch = true;
+          continue;
+        } else if (char == "?(") {
           ifs.push(stack.pop());
           continue;
         } else if (char == "?!(") {
@@ -673,6 +773,33 @@ module.exports = function (
             case "Exp::cos":
               if (stack.length < 1) throw new StackUnderflow(i, truecol);
               stack.push(Math.cos(stack.pop()));
+              break;
+            
+            case "#DEBUG":
+              let strr = debug_gen(
+                log,
+                stack,
+                variable,
+                func,
+                labels,
+                labelq,
+                wddict,
+                operators,
+                procstr,
+                expr,
+                module.exports.internal.stack2,
+                i,
+                j
+              );
+              log(strr);
+              result += strr;
+              break;
+            
+            case ")%":
+              break;
+              
+            case "=.":
+              cmparr.pop();
               break;
 
             case "[?]!":
@@ -956,7 +1083,8 @@ module.exports = function (
                   operators,
                   i,
                   truecol,
-                  char
+                  char,
+                  procstr
                 );
                 break;
               }
@@ -983,19 +1111,21 @@ module.exports = function (
         }
         if (jmpop) goto = true;
         if (goto) break;
+      } catch (e) {
+        if(!(e.code <= -1)) throw e;
+        if(!trycatch) throw e;
+        trycatcherr.push([e.internalName,true,e]);
       }
-
-      if (worddef > 0 && wdstring != 0) {
-        wdstring += "\n";
-      }
-
-      if (goto) continue;
     }
 
-    return result;
-  } catch (e) {
-    throw e;
+    if (worddef > 0 && wdstring != 0) {
+      wdstring += "\n";
+    }
+
+    if (goto) continue;
   }
+
+  return result;
 };
 module.exports.internal = {
   stack2: [],
@@ -1005,9 +1135,9 @@ module.exports.StackUnderflow = StackUnderflow;
 module.exports.UnknownWord = UnknownWord;
 module.exports.IncorrectType = IncorrectType;
 module.exports.errors = {InternalError,StackUnderflow,UnknownWord,IncorrectType};
-module.exports.version = "1.5.0";
+module.exports.version = version_mmp;
 module.exports.RCversion = {
-  number: "3",
+  number: "4",
   codename: "Westerwald",
 };                                                 
 module.exports.RC = 1
