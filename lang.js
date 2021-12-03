@@ -14,7 +14,7 @@ class StackUnderflow extends InternalError {
     this.internalName = this.name = "StackUnderflow";
     this.code = -2;
     this.tip =
-      "try to ensure that there are enough values on the stack for this operand";
+      "try to ensure that there are enough values on the stack (includes expression stack) for this operand";
     this.detailedDesc =
       "A StackUnderflow occurs when an operand requires more values on the stack than are currently there. This usually occurs when you forget to push a value to the stack.";
   }
@@ -89,7 +89,7 @@ function debug_gen(
   strr += "\n";
   strr += "      Second Stack: " + (stack2.map((x,ind,d)=>(ind==0?"":" ".repeat(20))+procstr(d[d.length-ind-1])).join("\n"));
   strr += "\n";
-  strr += "  Expression Stack: " + (expr.map((x,ind,d)=>(ind==0?"":" ".repeat(20))+d[d.length-ind-1]).join("\n"));
+  strr += "  Expression Stack: " + (expr.map((x,ind,d)=>(ind==0?"":" ".repeat(20))+d[d.length-ind-1].str).join("\n"));
   strr += "\n";
   strr += "             Label: " + (Object.keys(labels).map((x,ind,d)=>(ind==0?"":" ".repeat(20))+ x + " => " + labels[x].join(":")).join("\n"));
   strr += "\n";
@@ -119,6 +119,7 @@ let procstr_list = {
   "str instanceof RegExp": str=>`<RegEx ${str}>`,
   "str === null": str=>"nil",
   "Array.isArray(str)": str=>`<Array [${str.map(x=>procstr(x)).join(", ")}]>`,
+  "str instanceof Buffer": str=>`<Buffer [${[...str].map(x=>("0".repeat(2-x.toString(16).length))+x.toString(16)).join(", ")}]>`,
 };
 let procstr = (str) => {
   for(let i in procstr_list){
@@ -200,7 +201,10 @@ module.exports = function (
       "[?]!",
       "=.",
       ")%",
-      "#DEBUG"
+      "#DEBUG",
+      "!{}",
+      "^{}",
+      ">{}"
     );
     operators.push(...["sin", "cos"].map((x) => "Exp::" + x));
     operators.push(...Object.keys(tcpRPL));
@@ -268,8 +272,6 @@ module.exports = function (
 
   let ifs = [];
   
-  let expr = [];
-  
   let bracket = 0;
   
   let bracketins = "";
@@ -286,6 +288,7 @@ module.exports = function (
       return x != "" && x != "\t";
     });
     for (let j = goto ? jjump : 0; j < line.length; j++) {
+      let expr = module.exports.internal.expr;
       try{
         jmpop = false;
         variable["#LINE"] = i + 1;
@@ -324,7 +327,7 @@ module.exports = function (
         }
         if(char == "{"){
           bracket++;
-          continue;
+          if(bracket == 1) continue;
         }
         if(bracket > 0){
           if(char == "}") bracket--;
@@ -336,6 +339,7 @@ module.exports = function (
           }
           continue;
         }
+        if(char == "}") continue;
         if (ifs.length > 0) {
           if (Math.floor(ifs[ifs.length - 1]) != 1) {
             if(char == "=(" || char == "=>(" || char == "?(" || char == "?!(" || char == "*("){
@@ -531,6 +535,29 @@ module.exports = function (
           }
           continue;
         }
+        if (char.startsWith("#:")) {
+          let pat = char.match(/^#\:([\S\s]+)$/);
+          let farr = stack.pop();
+          let opnm = pat[1];
+          variable["#INT.MAP.ARRAY"] = farr;
+          for (let ic = 0; ic < farr.length; ic++) {
+            variable["#INT.MAP.TRANS"] = farr[ic];
+            variable["#INT.MAP.POINTER"] = ic;
+            module.exports(
+              `#INT.MAP.ARRAY #INT.MAP.POINTER #INT.MAP.TRANS ${opnm} [$]< "#INT.MAP.ARRAY" =`,
+              log,
+              stack,
+              variable,
+              func,
+              labels,
+              labelq,
+              wddict,
+              operators
+            );
+          }
+          stack.push(variable["#INT.MAP.ARRAY"]);
+          continue;
+        }
         if (char.startsWith("#-")) {
           let pat = char.match(/^#-([\S\s]+)$/);
           let farr = stack.pop();
@@ -611,7 +638,8 @@ module.exports = function (
           !char.startsWith(">>") &&
           !char.startsWith(">?") &&
           !char.startsWith(">!") &&
-          char != ">>>"
+          char != ">>>" &&
+          char != ">{}"
         ) {
           const lab = labels[char.slice(1)];
           i = lab[0] - 1;
@@ -685,8 +713,9 @@ module.exports = function (
           }
         }
         if (char == "=(") {
+          let cmpfrom = stack.pop();
           let cmpto = stack.pop();
-          ifs.push(stack.pop() == cmpto ? 1 : 0);
+          ifs.push(cmpfrom == cmpto ? 1 : 0);
           cmparr.push(cmpto);
           continue;
         } else if (char == "=>(") {
@@ -773,6 +802,34 @@ module.exports = function (
             case "Exp::cos":
               if (stack.length < 1) throw new StackUnderflow(i, truecol);
               stack.push(Math.cos(stack.pop()));
+              break;
+            
+            case "!{}":
+              if (expr.length < 1) throw new StackUnderflow(i, truecol);
+              module.exports(
+                expr[expr.length - 1].str,
+                log,
+                stack,
+                variable,
+                func,
+                labels,
+                labelq,
+                wddict,
+                operators
+              );
+              break;
+            
+            case "^{}":
+              if (expr.length < 1) throw new StackUnderflow(i, truecol);
+              expr.pop();
+              break;
+            
+            case ">{}":
+              if (stack.length < 1) throw new StackUnderflow(i, truecol);
+              expr.push({
+                str: stack.pop(),
+                i,j
+              });
               break;
             
             case "#DEBUG":
@@ -1129,6 +1186,7 @@ module.exports = function (
 };
 module.exports.internal = {
   stack2: [],
+  expr: []
 };
 module.exports.InternalError = InternalError;
 module.exports.StackUnderflow = StackUnderflow;
@@ -1140,7 +1198,7 @@ module.exports.RCversion = {
   number: "4",
   codename: "Westerwald",
 };                                                 
-module.exports.RC = 1
+module.exports.RC = 0
   ? module.exports.RCversion
   : false;
 

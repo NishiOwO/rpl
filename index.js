@@ -124,7 +124,7 @@ require("fs").readdirSync(pathlib.join(__dirname,"extension")).filter(x=>x.endsW
     }
   }
 });
-if (process.argv.length < 3) {
+if (process.argv.find(x=>x.endsWith(".rpl")) == null) {
   if (language.RC) {
     // display a warning if we are using a rc version
     // todo: require user input to continue using
@@ -193,9 +193,10 @@ if (process.argv.length < 3) {
     require("util").deprecate(() => {},
     "--nolog doesn't work anymore.\n--nolog is abolished on \x1b[1m1.4.0 RC2\x1b[m.")();
   }
-  process.chdir(require("path").dirname(process.argv[2]));
+  let codefile = process.argv.find(x=>x.endsWith(".rpl"));
+  process.chdir(require("path").dirname(codefile));
   const dolog = false; // !process.argv.slice(3).includes("--nolog");
-  let code = fs.readFileSync(cwdp(process.argv[2]), "utf8");
+  let code = fs.readFileSync(cwdp(codefile), "utf8");
   if (dolog)
     console.log(
       colors.BRIGHT + "Read code: \n" + colors.YELLOW + code + colors.RESET

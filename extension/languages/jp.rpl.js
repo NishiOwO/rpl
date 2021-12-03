@@ -19,7 +19,7 @@ module.exports=function(ver){
       this.internalName = "StackUnderflow";
       this.code = -2;
       this.tip =
-        "そのオペランドを実行するために必要な値がスタックに入っているか確認してみてください。";
+        "そのオペランドを実行するために必要な値がスタック(式スタックも含む)に入っているか確認してみてください。";
       this.detailedDesc =
         "スタックアンダーフローはオペランドがスタックに既に入っている値よりもさらに必要な時に起こります。 これはよくユーザーがスタックに値をプッシュし忘れた時に起こります。";
     }
@@ -97,6 +97,7 @@ module.exports=function(ver){
   };
   lang["procstr_list['Array.isArray(str)']"] = (str,procstr)=>`<配列 [${str.map(x=>procstr(x)).join(", ")}]>`;
   lang["procstr_list['str instanceof RegExp']"] = str=>`<正規表現 ${str}>`;
+  lang["procstr_list['str instanceof Buffer']"] = str=>`<バッファー [${[...str].map(x=>("0".repeat(2-x.toString(16).length))+x.toString(16)).join(", ")}]>`;
   if(typeof ver == "string") lang["version_mmp"] = "J" + ver;
   main.crashdump = function(error) {
     //! something bad happened, print scary stacktrace

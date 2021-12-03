@@ -1,17 +1,1 @@
-wd-begin "let name=stack.pop();throw new errors[name](...stack.pop());" .JS wd-end(2) throw
-wd-begin "stack.push(line)" .JS wd-end line
-wd-begin "stack.push(command)" .JS wd-end cmd
-%(
-  "" "" ~>
-):(
-  "1" . .NL
-)%
-%(
-  "a" "b" line cmd 4 ] "IncorrectType" throw
-):[IncorrectType](
-  "2" . .NL
-)%
-%( "a" "b" line cmd 4 ] "IncorrectType" throw ):( "3" . .NL )%
-wd-begin -- wd-end_(throw,line,cmd) a
-1 2 3 "a" 0 1 2 3 ] #DEBUG
-.?
+100 "m" = { { 0 [EQ] } #:!{} ^{} #-+ 0 @ 2 [EQ] } 1 : m + ... : #*% #:!{} 1 : m + ... #& .NL
