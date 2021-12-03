@@ -1,7 +1,7 @@
 const fs = require("fs");
 const { execSync } = require("child_process");
 
-const VERSION = "1.5.0";
+const VERSION = "1.5.0A";
 
 console.log("mkpbl - configuring");
 

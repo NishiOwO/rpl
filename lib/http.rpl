@@ -1,16 +1,30 @@
 wd-begin
+  >!HTTPRequest
+wd-end_ http::request
+wd-begin
+  >!HTTPResponse
+  "data" "" [$]<
+  "headers" "Connection" "Keep-Alive" 2 ] 1 ] [$]<
+  "httpVersion" "1.1" [$]<
+  "statusCode" 200 [$]<
+  "statusText" "OK" [$]<
+wd-end_ http::response
+wd-begin
+  "&#x$1;" "%([0-9A-Fa-f]{2})" "g" !/#/ ^/#/
+wd-end http::URItoHTML
+wd-begin
   >!HTTPServer
   wd-begin
     #SELF "tcp" @ 2 <> ~!
   wd-end(1) onListen
   "tcp" 0 ~#
   wd-begin
-    server
+    %server%
   wd-end serv
   wd-begin
-    : "socket" =
+    : "%socket%" =
     wd-begin
-      socket
+      %socket%
     wd-end getsock
     wd-begin
       serv
@@ -49,6 +63,27 @@ wd-begin
         #SELF
       wd-end(1) end
       "end" >>end
+      wd-begin
+        wd-begin
+          ": " [$],
+        wd-end parse2
+        0x0d $>? 0x0a $>? + "CRLF" =
+        #SELF "data" @ 2 <> + #SELF 2 <> "data" 2 <> [$]<
+        "data" @
+        "HTTP/" #SELF "httpVersion" @ + " " +
+        #SELF "statusCode" @ + " " + #SELF "statusText" @ +
+        CRLF +
+        #SELF "headers" @ ][ 0 [EQ] #LINE 3 + 1 ;
+        #SELF "headers" @ #+parse2 #SELF "headers" @ ][ ] CRLF [$], +
+        #LINE 2 + 1 #
+        --
+        CRLF +
+        CRLF +
+        2 <> +
+        getsock 2 <> ~> \
+        #SELF
+      wd-end(1) send
+      "send" >>send
       http::request
       "method" basic 1 @ [$]<
       "path" basic 2 @ [$]<
@@ -63,26 +98,13 @@ wd-begin
       spl 0x0a $>? [$], "^([\S\s]+)\n\n" "m" !/#/ ?/#/ 1 @
       "headers" 0x0a $>? ,/#/ : ][ "spllen" = #+parse spllen ] [$]<
       "raw" raw [$]<
-      get >?connection
-    wd-end_(getsock,get,http::request,http::response) onSockData
+      %server% >?connection
+    wd-end_(getsock,get,http::request,http::response,serv) onSockData
     "data" >>onSockData \
-  wd-end_(http::request,http::response) onTCPConnect
+  wd-end_(http::request,http::response,serv) onTCPConnect
   "connection" >>onTCPConnect
   [$]<
   "listen" >>onListen
-  : "server" =
+  "endOption" 1 [$]<
+  : "%server%" =
 wd-end_(http::request,http::response) http::server
-wd-begin
-  >!HTTPRequest
-wd-end_ http::request
-wd-begin
-  >!HTTPResponse
-  "data" "" [$]<
-  "headers" "Connection" "Keep-Alive" 2 ] 1 ] [$]<
-  "httpVersion" "1.1" [$]<
-  "statusCode" 200 [$]<
-  "statusText" "OK" [$]<
-wd-end_ http::response
-wd-begin
-  "&#x$1;" "%([0-9A-Fa-f]{2})" "g" !/#/ ^/#/
-wd-end http::URItoHTML

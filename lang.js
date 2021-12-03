@@ -117,6 +117,7 @@ let procstr_list = {
           : ""
       }>`,
   "str instanceof RegExp": str=>`<RegEx ${str}>`,
+  "str instanceof require('url').Url": str=>`<URL ${require('url').format(str)}>`,
   "str === null": str=>"nil",
   "Array.isArray(str)": str=>`<Array [${str.map(x=>procstr(x)).join(", ")}]>`,
   "str instanceof Buffer": str=>`<Buffer [${[...str].map(x=>("0".repeat(2-x.toString(16).length))+x.toString(16)).join(", ")}]>`,
@@ -130,7 +131,7 @@ let procstr = (str) => {
   return str;
 };
 
-let version_mmp = "1.5.0";
+let version_mmp = "1.5.0A";
 
 const [tcpRPL, eventRPL, compRPL, arrayRPL, mathRPL, logicRPL, ioRPL, miscRPL] =
   ["tcp", "event", "comparison", "array", "math", "logic", "io", "misc"].map(
@@ -185,8 +186,12 @@ module.exports = function (
   //Variable for saving inside of double quotation
 
   let operators = [];
-  if (_op.length == 0) {
-    module.exports.internal.stack2 = [];
+  if (_op.length == 0 || (_op.length >= 2 && _op[0] == 1 && _op[1])) {
+    if(!(_op.length >= 2)){
+      module.exports.internal.stack2 = [];
+    }else{
+      operators.push(..._op[1]);
+    }
     operators.push(..."#;()".split(""));
     operators.push(
       ".FN",
@@ -298,7 +303,7 @@ module.exports = function (
         goto = false;
         truecol++;
         const char = line[j];
-        if(debug) console.log(trycatch,trycatcherr,char);
+        if(debug) console.log(i,":",truecol,trycatch,trycatcherr,char);
         if(trycatcherr.length > 0){
         if(trycatcherr[trycatcherr.length - 1][1]){
           if(char == `):[${trycatcherr[trycatcherr.length - 1][0].match(/^([^\(]+)/)[1]}](` || char == `):(` || char == ")%"){
@@ -409,6 +414,7 @@ module.exports = function (
             wdstring = wdstring.replace(/^\n|\n$/g, "");
             const wdname = line[j + 1];
             operators.push(wdname);
+            if(debug) console.log(wddict);
             wddict[wdname] = {
               data: wdstring,
               args: +char
@@ -767,8 +773,10 @@ module.exports = function (
 
             if (char.endsWith('"') && char.length != 1) {
               dq = false;
-              dqstr = dqstr.replace(/\\(\\)|\\x([0-9a-fA-F]{2})|\\u([0-9a-fA-F]{4})/g,(_,slash,xpt,upt)=>{
+              dqstr = dqstr.replace(/\\(\\)|\\x([0-9a-fA-F]{2})|\\u([0-9a-fA-F]{4})|\\r|\\n/g,(_,slash,xpt,upt)=>{
                 if(slash == "\\") return "\\";
+                if(_ == "\\r") return "\r";
+                if(_ == "\\n") return "\n";
                 if(xpt || upt) return String.fromCharCode(+("0x" + (xpt || upt)));
               });
               stack.push(dqstr.slice(0, -1));
@@ -785,6 +793,7 @@ module.exports = function (
               if (Object.keys(va).includes(char)) {
                 return va[char];
               } else {
+                if(debug) console.log(wddict,variable);
                 throw new UnknownWord(char, i, truecol);
               }
             };
@@ -1145,23 +1154,32 @@ module.exports = function (
                 );
                 break;
               }
+              if(debug) console.log("%O",wddict);
+              if(debug) console.log(Object.prototype.toString.call(wddict));
               if (stack.length < wddict[char].args) {
                 throw new StackUnderflow(i, truecol);
               }
               let wdtemp = {};
-              wdtemp = Object.keys(wddict)
+              Object.keys(wddict)
                 .filter((x) => wddict[char].list.includes(x))
-                .map((x) => wddict[x]);
+                .map((x) => {
+                  wdtemp[x] = wddict[x];
+                });
+              let copied = {};
+              Object.assign(copied,defaultVariable);
+              Object.keys(variable).filter(x=>x.startsWith("%")&&x.endsWith("%")).map(x=>{
+                copied[x] = variable[x];
+              });
               module.exports(
                 wddict[char].data,
                 log,
                 stack,
-                wddict[char].temp ? defaultVariable : variable,
+                wddict[char].temp ? copied : variable,
                 func,
                 labels,
                 labelq,
                 wddict[char].temp ? wdtemp : wddict,
-                operators
+                wddict[char].temp ? [1,Object.keys(wdtemp)] : operators
               );
               break;
           }

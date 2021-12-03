@@ -107,7 +107,9 @@ module.exports = {
     if (stack.length < 2) throw new err.StackUnderflow(i, truecol);
     let name = stack.pop();
     let serv = stack.pop();
-    serv.on(name, (...args) => {
+    serv.on(name, function(a){
+      let args = [a];
+      //console.log(name,args);
       variable["#SELF"] = serv;
       if (serv.constructor == net.Server && name == "connection") {
         args[0].on("error", () => {});
